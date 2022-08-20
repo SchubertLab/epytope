@@ -24,7 +24,7 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
 
     """
     __name = "ERGO-II"
-    __command = "python3 Predict.py"
+    __command = "python Predict.py"
     __version = " "
 
     @property
@@ -68,7 +68,6 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
                            }
                }
 
-
     def get_external_version(self, path=None):
         """
         Returns the external version of the tool by executing
@@ -83,21 +82,7 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
         """
         return None
 
-    def invalid(self, seq: str) -> bool:
-        """
-        Overwrites ATCRSpecificityPrediction.invalid
-
-        check if the passed sequence is a protein sequence
-        :param str seq: a String representing the protein sequence
-        :return: Returns true if the passed sequence is not a protein sequence
-        :rtype: bool
-        """
-        aas = set("ARNDCEQGHILKMFPSTWYV")
-        if seq:
-            return any([aa not in aas for aa in seq])
-        return True
-
-    def predict(self, peptides, TCRs, all: bool, trained_on: str = None):
+    def predict(self, peptides, TCRs, repository: str, all: bool, trained_on: str = None):
         """
         Overwrites ATCRSpecificityPrediction.predict
 
@@ -109,26 +94,25 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
         :param TCRs: T cell receptor objects
         :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
         list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
+        :param str repository: a path to a local github repository of ERGO-II predictor
         :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
         the prediction will be preformed in the same order of the passed peptides and TCRs objects
         :param str trained_on: specifying the dataset the model trained on
         :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
         :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
         """
-        df = super().predict(peptides, TCRs, all)
-        #tmp_file = NamedTemporaryFile(delete=False)
-        #df.to_csv(tmp_file.name, sep=",", index=False)
-        df_result = self.predict_from_dataset(df=df, score=-1)
-        #tmp_file.close()
-        #os.remove(tmp_file.name)
+        df = super().predict(peptides=peptides, TCRs=TCRs, repository=repository, all=all)
+        df_result = self.predict_from_dataset(repository=repository, df=df, score=-1, trained_on=trained_on)
         return df_result
 
-    def predict_from_dataset(self, path : str = None, df: pd.DataFrame = None, source: str = "", score: int = 1):
+    def predict_from_dataset(self, repository: str, path: str = None, df: pd.DataFrame = None, source: str = "",
+                             score: int = 1, trained_on: str=None):
         """
         Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide.
         The path should lead to csv file with fixed column names dataset.columns = ['TRA', 'TRB', "TRAV", "TRAJ",
         "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species", "Antigen.species", "Tissue"]. If some values for
         one or more variables are unavailable, leave them as blank cells.
+        :param str repository: a path to a local github repository of ERGO-II predictor
         :param str path: a string representing a path to the dataset(csv file), which will be precessed. Default value
         is None, when the dataframe object is given
         :param `pd.DataFrame` df: a dataframe object. Default value is None, when the path is given
@@ -137,6 +121,7 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
         :param int score: An integer representing a confidence score between 0 and 3 (0: critical information missing,
         1: medium confidence, 2: high confidence, 3: very high confidence). By processing all entries with a confidence
         score >= the passed parameter score will be kept. Default value is 1
+        :param str trained_on: specifying the dataset the model trained on
         :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
         :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
         """
@@ -148,12 +133,19 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
             df = process_dataset_TCR(df=df, source=source, score=score)
         df = df[['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC"]]
         df = df[(df["Peptide"] != "") & (df["TRB"] != "")]
-        path = ""
-        for root, _, _ in os.walk(os.path.expanduser('~')):
-            if root.endswith("epytope/TCRSpecificityPrediction"):
-                path = os.path.join(root, "Models/ERGO-II/")
-                break
-        os.chdir(path)
+        if not os.path.exists(os.path.join(repository, "Predict.py")):
+            raise FileNotFoundError("Please pass a path to the local ERGO-II repository on your computer")
+        else:
+            # editing Predict script to save the result as csv file into the tmp_out file
+            os.chdir(repository)
+            script = []
+            with open("Predict.py", "r") as f:
+                script.extend(f.readlines())
+            if "    df.to_csv(sys.argv[3], sep=',', index=False)\n" not in script:
+                idx = script.index('    df = predict(sys.argv[1], sys.argv[2])\n')
+                script.insert(idx + 1, "    df.to_csv(sys.argv[3], sep=',', index=False)\n")
+                with open("Predict.py", "w") as f:
+                    f.writelines(script)
         tmp_file = NamedTemporaryFile(delete=False)
         df.to_csv(tmp_file.name, sep=",", index=False)
         tmp_out = NamedTemporaryFile(delete=False)
@@ -161,10 +153,13 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
             stdo = None
             stde = None
             cmd = self.__command
-            if source in ["vdjdb", "mcpas"]:
-                cmd += f" {source} {tmp_file.name} {tmp_out.name}"
+            if trained_on and trained_on.lower() in ["vdjdb", "mcpas"]:
+                cmd += f" {trained_on.lower()} {tmp_file.name} {tmp_out.name}"
             else:
-                cmd += f" vdjdb {tmp_file.name} {tmp_out.name}"
+                if source and source.lower() in ["vdjdb", "mcpas"]:
+                    cmd += f" {source.lower()} {tmp_file.name} {tmp_out.name}"
+                else:
+                    cmd += f" vdjdb {tmp_file.name} {tmp_out.name}"
             p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT)
             stdo, stde = p.communicate()

@@ -42,21 +42,25 @@ class TestTCRSpecificityPredictionClass(unittest.TestCase):
         self.vdjdb = os.path.join(self.path, "vdjdb_full.txt")
         self.McPAS = os.path.join(self.path, "McPAS-TCR.csv")
         self.IEDB = os.path.join(self.path, "tcell_receptor_table_export_1660640162.csv")
+        # path to a local ERGO-ii repository
+        self.repository = "/home/mahmoud/Documents/epytope/epytope/epytope/TCRSpecificityPrediction/Models/ERGO-II"
 
     def test_TCR_specificity_prediction_multiple_input(self):
         for m in TCRSpecificityPredictorFactory.available_methods():
             mo = TCRSpecificityPredictorFactory(m)
             print("\nTesting", mo.name)
             print("Test binding specificity for each TCR to each epitope")
-            mo.predict(peptides=self.epitopes, TCRs=self.TCRs, all=True, trained_on="vdjdb")
+            mo.predict(peptides=self.epitopes, TCRs=self.TCRs, repository=self.repository, all=True, trained_on="vdjdb")
             print("Test binding specificity for TCRs to the corresponding epitopes in the same passed order\n")
-            mo.predict(peptides=self.epitopes, TCRs=self.TCRs, all=False, trained_on="vdjdb")
+            mo.predict(peptides=self.epitopes, TCRs=self.TCRs, repository=self.repository, all=False,
+                       trained_on="vdjdb")
 
     def test_TCR_specificity_prediction_single_input(self):
         for m in TCRSpecificityPredictorFactory.available_methods():
             mo = TCRSpecificityPredictorFactory(m)
             print("\nTesting", mo.name)
-            mo.predict(peptides=self.epitopes[0], TCRs=self.TCRs[0], all=False, trained_on="vdjdb")
+            mo.predict(peptides=self.epitopes[0], TCRs=self.TCRs[0], repository=self.repository, all=False,
+                       trained_on="vdjdb")
 
     def test_TCR_specificity_prediction_dataset(self):
         tmp_file = NamedTemporaryFile(delete=False)
@@ -64,32 +68,35 @@ class TestTCRSpecificityPredictionClass(unittest.TestCase):
         for m in TCRSpecificityPredictorFactory.available_methods():
             mo = TCRSpecificityPredictorFactory(m)
             print("\nTesting", mo.name)
-            mo.predict_from_dataset(path=tmp_file.name)
+            mo.predict_from_dataset(repository=self.repository, path=tmp_file.name)
             print("Testing on vdjdb")
-            mo.predict_from_dataset(path=self.vdjdb, source="vdjdb")
+            mo.predict_from_dataset(repository=self.repository, path=self.vdjdb, source="vdjdb")
             print("Testing on McPAS")
-            mo.predict_from_dataset(path=self.McPAS, source="mcpas")
+            mo.predict_from_dataset(repository=self.repository, path=self.McPAS, source="mcpas", trained_on="McPAS")
             print("Testing on IEDB\n")
-            mo.predict_from_dataset(path=self.IEDB, source="IEDB")
+            mo.predict_from_dataset(repository=self.repository, path=self.IEDB, source="IEDB")
         os.remove(tmp_file.name)
 
     def test_wrong_input(self):
         with self.assertRaises(ValueError):
             mo = TCRSpecificityPredictorFactory("ergo-ii")
-            mo.predict(peptides=self.peptide, TCRs=self.TCRs, all=True, trained_on="vdjdb")
-            mo.predict(peptides=self.epitopes, TCRs=self.TCR, all=True, trained_on="vdjdb")
+            mo.predict(peptides=self.peptide, TCRs=self.TCRs, repository=self.repository, all=True, trained_on="vdjdb")
+            mo.predict(peptides=self.epitopes, TCRs=self.TCR, repository=self.repository, all=True, trained_on="vdjdb")
 
     def test_merging_and_filtering(self):
         mo = TCRSpecificityPredictorFactory("ergo-ii")
-        result1 = mo.predict(peptides=self.epitopes[0], TCRs=self.TCRs[0], all=False, trained_on="vdjdb")
-        result2 = mo.predict(peptides=self.epitopes[1], TCRs=self.TCRs[1], all=False, trained_on="vdjdb")
+        result1 = mo.predict(peptides=self.epitopes[0], TCRs=self.TCRs[0], repository=self.repository, all=False,
+                             trained_on="vdjdb")
+        result2 = mo.predict(peptides=self.epitopes[1], TCRs=self.TCRs[1], repository=self.repository, all=False,
+                             trained_on="vdjdb")
         print("\n\nTest merging")
         print(result1.merge_results(result2))
         print("\n\nTest filtering")
         com = lambda x, y: x > y
         thr = 0.7
         expression = (mo.name.upper(), com, thr)
-        result = mo.predict(peptides=self.epitopes, TCRs=self.TCRs, all=False, trained_on="vdjdb")
+        result = mo.predict(peptides=self.epitopes, TCRs=self.TCRs, repository=self.repository, all=False,
+                            trained_on="vdjdb")
         print(f"\nresult before filtering:\n{result}\n\nresult after filtering:\n{result.filter_result(expression)}")
 
     def test_scirpy_format(self):
@@ -106,7 +113,7 @@ class TestTCRSpecificityPredictionClass(unittest.TestCase):
         df = df.merge(df2, on="key")[['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC",
                                       "Species", "Antigen.species", "Tissue"]]
         print("\n\nTesting scirpy")
-        mo.predict_from_dataset(df=df)
+        mo.predict_from_dataset(repository=self.repository, df=df)
 
 
 if __name__ == '__main__':

@@ -74,7 +74,7 @@ class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction, AExternal):
 
         return True
 
-    def predict(self, peptides, TCRs, all: bool, trained_on: str=None):
+    def predict(self, peptides, TCRs, repository: str, all: bool, trained_on: str=None):
         """
         Overwrites ATCRSpecificityPrediction.predict
 
@@ -86,6 +86,7 @@ class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction, AExternal):
         :param TCRs: T cell receptor objects
         :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
         list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
+        :param str repository: a path to a local github repository of the desired predictor
         :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
         the prediction will be preformed in the same order of the passed peptides and TCRs objects
         :param str trained_on: specifying the dataset the model trained on
@@ -147,7 +148,6 @@ class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction, AExternal):
                 data[i] = tcr.tcr
 
         return pd.DataFrame(data).transpose()
-
 
 
 

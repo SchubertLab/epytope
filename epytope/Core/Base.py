@@ -473,7 +473,7 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def predict(self, peptides, TCRs, all: bool, dataset: str = None):
+    def predict(self, peptides, TCRs, repository: str, all: bool, dataset: str = None, trained_on: str=None):
         """
         Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide
         If alleles is not given, predictions for all valid alleles of the predictor is performed. If, however,
@@ -483,9 +483,11 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         :param TCRs: T cell receptor objects
         :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
         list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
+        :param str repository: a path to a local github repository of the desired predictor
         :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
         the prediction will be preformed in the same order of the passed peptides and TCRs objects
         :param str dataset: specifying the dataset the model trained on
+        :param str trained_on: specifying the dataset the model trained on
         :return: Returns a :class:`~epytope.Core.Result.AResult` object for the specified
                  :class:`~epytope.Core.Peptide.Peptide` and :class:`~epytope.Core.Allele.Allele`
         :rtype: :class:`~epytope.Core.Result.AResult`
@@ -493,12 +495,14 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def predict_from_dataset(self, path : str = None, df: pd.DataFrame = None, source: str = "", score: int = 1):
+    def predict_from_dataset(self, repository: str, path : str = None, df: pd.DataFrame = None, source: str = "",
+                             score: int = 1, trained_on: str=None):
         """
         Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide.
         The path should lead to csv file with fixed column names dataset.columns = ['TRA', 'TRB', "TRAV", "TRAJ",
         "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species", "Antigen.species", "Tissue"]. If some values for
         one or more variables are unavailable, leave them as blank cells.
+        :param str repository: a path to a local github repository of the desired predictor
         :param str path: a string representing a path to the dataset(csv file), which will be precessed. Default value
         is None, when the dataframe object is given
         :param `pd.DataFrame` df: a dataframe object. Default value is None, when the path is given
@@ -507,6 +511,7 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         :param int score: An integer representing a confidence score between 0 and 3 (0: critical information missing,
         1: medium confidence, 2: high confidence, 3: very high confidence). By processing all entries with a confidence
         score >= the passed parameter score will be kept. Default value is 1
+        :param str trained_on: specifying the dataset the model trained on
         :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
         :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
         """
