@@ -316,10 +316,10 @@ def read_vcf(vcf_file, gene_filter=None, experimentalDesig=None):
 def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str = None, score: int = 1) \
         -> pd.DataFrame:
     """
-    can read and process four different datasets [vdjdb, McPAS, scirpy, ] or a csv file with fixed column names
-    dataset.columns = ['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
-    "Antigen.species", "Tissue"]. If some values for one or more variables are unavailable, leave them as blank
-    cells
+    can read and process four different datasets [vdjdb, McPAS, scirpy, IEDB] or a csv file with fixed column names
+    dataset.columns = ["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC",
+    "Species", "Antigen.species", "Tissue"]. If some values for one or more variables are unavailable, leave them as
+    blank cells
     :param int score: An integer representing a confidence score between 0 and 3 (0: critical information missing,
     1: medium confidence, 2: high confidence, 3: very high confidence). By processing all entries with a confidence
     score >= the passed parameter score will be kept. Default value is 1
@@ -378,7 +378,7 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
     if path is None and df is None:
         raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
     # reading and processing the vdjdb
-    if source.lower() == "vdjdb":
+    if source and source.lower() == "vdjdb":
         if df is None:
             df = pd.read_csv(path, sep='\t', low_memory=False)
             pd.options.mode.chained_assignment = None
@@ -390,10 +390,10 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
                 keep='first').reset_index(drop=True)
 
         # select only the columns mentioned in the description above
-        df = df[["cdr3.alpha", "cdr3.beta", "v.alpha", "j.alpha", "v.beta", "j.beta", "meta.cell.subset",
-                 "antigen.epitope", "mhc.a", "species", "antigen.species", "meta.tissue"]]
+        df = df[["meta.clone.id", "cdr3.alpha", "cdr3.beta", "v.alpha", "j.alpha", "v.beta", "j.beta",
+                 "meta.cell.subset", "antigen.epitope", "mhc.a", "species", "antigen.species", "meta.tissue"]]
         # rename the selected columns
-        df.columns = ['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
+        df.columns = ["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
                       "Antigen.species", "Tissue"]
         # replace not available values with empty cells
         df = df.fillna('')
@@ -403,23 +403,25 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
         return process(df)
 
     # reading and processing the McPAS
-    elif source.upper() == "MCPAS":
+    elif source and source.upper() == "MCPAS":
         if df is None:
             df = pd.read_csv(path, sep=",", encoding='cp1252', low_memory=False)
         df = df[["CDR3.alpha.aa", "CDR3.beta.aa", "TRAV", "TRAJ", "TRBV", "TRBJ", "T.Cell.Type", "Epitope.peptide",
                  "MHC", "Species", "Pathology", "Tissue"]]
         df.columns = ['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
                       "Antigen.species", "Tissue"]
+        df.insert(0, "Receptor_ID", [i for i in range(len(df))])
         # replace not available values with empty cells
         df = df.fillna('')
         df.drop_duplicates(subset=["TRA", "TRB", "Peptide"], keep='first', inplace=True)
         return process(df)
 
-    elif source.lower() == "scirpy":
+    elif source and source.lower() == "scirpy":
         if df is None:
             df = pd.read_csv(path, low_memory=False)
         df.reset_index(inplace=True)
-        # different versions of python read different column names of scirpy datasets, so we have to deal with that
+        # different versions of scirpy have different column names of scirpy datasets, so we have to deal with
+        # that
         if "IR_VJ_1_cdr3" in df.columns:
             df = df[["IR_VJ_1_cdr3", "IR_VDJ_1_cdr3", "IR_VJ_1_v_gene", "IR_VJ_1_j_gene", "IR_VDJ_1_v_gene",
                      "IR_VDJ_1_j_gene"]]
@@ -430,15 +432,16 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
                                                        "Tissue"])
         df.columns = ['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
                       "Antigen.species", "Tissue"]
+        df.insert(0, "Receptor_ID", [i for i in range(len(df))])
         df.replace("None", "", inplace=True)
         df.replace("nan", "", inplace=True)
         df.fillna("", inplace=True)
         df.drop_duplicates(subset=["TRA", "TRB"], keep='first', inplace=True)
         return process(df, source="scirpy")
-    elif source.upper() == "IEDB":
+    elif source and source.upper() == "IEDB":
         if df is None:
             df = pd.read_csv(path, sep=",", low_memory=False)
-        df = df[['Chain 1 CDR3 Calculated', 'Chain 2 CDR3 Calculated', 'Calculated Chain 1 V Gene',
+        df = df[["Receptor ID", 'Chain 1 CDR3 Calculated', 'Chain 2 CDR3 Calculated', 'Calculated Chain 1 V Gene',
                 'Calculated Chain 1 J Gene', 'Calculated Chain 2 V Gene', 'Calculated Chain 2 J Gene', 'Description',
                  'MHC Allele Names', 'Organism']]
         df["Description"] = df["Description"].apply(lambda x: x.split()[0]
@@ -446,7 +449,7 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
         df.insert(6, "T-Cell-Type", "")
         df.insert(9, "Species", "")
         df.insert(11, "Tissue", "")
-        df.columns = ['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
+        df.columns = ["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
                       "Antigen.species", "Tissue"]
         df[["TRA", "TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]] = \
             df[["TRA", "TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]].replace("nan", "")

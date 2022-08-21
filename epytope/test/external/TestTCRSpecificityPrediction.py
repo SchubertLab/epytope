@@ -25,23 +25,18 @@ class TestTCRSpecificityPredictionClass(unittest.TestCase):
                                    cdr3="CASSFEPGQGFYSNQPQHF")
         epitope1 = TCREpitope("FLKEKGGL", mhc="HLA-B*08")
         epitope2 = TCREpitope("SQLLNAKYL", mhc="HLA-B*08")
-        TCR1 = AntigenImmuneReceptor(receptor_id="", chains=[TRA1, TRB1], cell_type="CD8")
-        TCR2 = AntigenImmuneReceptor(receptor_id="", chains=[TRA2, TRB2], cell_type="CD8")
+        TCR1 = AntigenImmuneReceptor(receptor_id="1", chains=[TRA1, TRB1], cell_type="CD8")
+        TCR2 = AntigenImmuneReceptor(receptor_id="2", chains=[TRA2, TRB2], cell_type="CD8")
         self.TCRs = [TCR1, TCR2]
         self.epitopes = [epitope1, epitope2]
         self.peptide = []
-        self.dataset = pd.DataFrame({"TRA": "CAVSAASGGSYIPTF", "TRB": "CASSFSGNTGELFF", "TRAV": "TRAV3", "TRAJ": "TRAJ6",
+        self.dataset = pd.DataFrame({"Receptor_ID": 1, "TRA": "CAVSAASGGSYIPTF", "TRB": "CASSFSGNTGELFF", "TRAV": "TRAV3", "TRAJ": "TRAJ6",
                                 "TRBV": "TRBV12-3", "TRBJ": "TRBJ2-2", "T-Cell-Type": "CD8", "Peptide": "RAKFKQLL",
                                 "MHC": "HLA-B*08", "Species": "", "Antigen.species": "", "Tissue": ""}, index=[0])
         self.TCR = ""
-        self.path = ""
-        for root, _, _ in os.walk(os.path.expanduser('~')):
-            if root.endswith("/epytope/Data/TCR"):
-                self.path = root
-                break
-        self.vdjdb = os.path.join(self.path, "vdjdb_full.txt")
-        self.McPAS = os.path.join(self.path, "McPAS-TCR.csv")
-        self.IEDB = os.path.join(self.path, "tcell_receptor_table_export_1660640162.csv")
+        self.vdjdb = "/home/mahmoud/Documents/Github/GoBi/TCR/epytope/Data/TCR/vdjdb_full.txt"
+        self.McPAS = "/home/mahmoud/Documents/Github/GoBi/TCR/epytope/Data/TCR/McPAS-TCR.csv"
+        self.IEDB = "/home/mahmoud/Documents/Github/GoBi/TCR/epytope/Data/TCR/tcell_receptor_table_export_1660640162.csv"
         # path to a local ERGO-ii repository
         self.repository = "/home/mahmoud/Documents/epytope/epytope/epytope/TCRSpecificityPrediction/Models/ERGO-II"
 
@@ -104,14 +99,11 @@ class TestTCRSpecificityPredictionClass(unittest.TestCase):
         df = ir.datasets.wu2020().obs
         # get all TCR seqs in scirpy format
         df = process_dataset_TCR(df=df, source="scirpy")
-        df = df[['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Species", "Antigen.species", "Tissue"]]
+        df = df[["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Species", "Antigen.species", "Tissue"]]
         df2 = pd.DataFrame({"Peptide": [str(pep) for pep in self.epitopes],
                             "MHC": [pep.mhc for pep in self.epitopes]})
         # map each TCR seq to each epitope in the epitopes list
-        df["key"] = 1
-        df2["key"] = 1
-        df = df.merge(df2, on="key")[['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC",
-                                      "Species", "Antigen.species", "Tissue"]]
+        df = pd.merge(df, df2, how='cross')
         print("\n\nTesting scirpy")
         mo.predict_from_dataset(repository=self.repository, df=df)
 

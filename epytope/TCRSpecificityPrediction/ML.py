@@ -53,18 +53,23 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
         """
         return []
 
-    def parse_external_result(self, file):
+    def parse_external_result(self, file: str, df: pd.DataFrame):
         """
         Parses external results and returns the result
         :param str file: The file path or the external prediction results
+        :param pd.DataFrame df: the complete processed dataframe
         :return: A dictionary containing the prediction results
-        :rtype: dict{(str, str, str): float} {(TRA, TRB, Peptide): score}
+        :rtype: dict{(str, str, str, str): float} {(Receptor_ID, TRA, TRB, Peptide): score}
         """
-        df = pd.read_csv(file)[["TRA", "TRB", "Peptide", "Score"]]
-        df.fillna("", inplace=True)
+        result = pd.read_csv(file)[["TRA", "TRB", "Peptide", "Score"]]
+        result.index = df.index
+        result["Score"].astype(float)
+        result.insert(0, "Receptor_ID", df["Receptor_ID"])
+        result.fillna("", inplace=True)
+        result["Receptor_ID"].astype(str)
         return {self.name: {
-                            row[:3]: float("{:.4f}".format(float(row[3])))
-                            for row in df.itertuples(index=False)
+                            row[:4]: float("{:.4f}".format(row[4]))
+                            for row in result.itertuples(index=False)
                            }
                }
 
@@ -131,8 +136,8 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
             df = process_dataset_TCR(path=path, source=source, score=score)
         else:
             df = process_dataset_TCR(df=df, source=source, score=score)
-        df = df[['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC"]]
-        df = df[(df["Peptide"] != "") & (df["TRB"] != "")]
+        ergo_df = df[['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC"]]
+        ergo_df = ergo_df[(ergo_df["Peptide"] != "") & (ergo_df["TRB"] != "")]
         if not os.path.exists(os.path.join(repository, "Predict.py")):
             raise FileNotFoundError("Please pass a path to the local ERGO-II repository on your computer")
         else:
@@ -147,7 +152,7 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
                 with open("Predict.py", "w") as f:
                     f.writelines(script)
         tmp_file = NamedTemporaryFile(delete=False)
-        df.to_csv(tmp_file.name, sep=",", index=False)
+        ergo_df.to_csv(tmp_file.name, sep=",", index=False)
         tmp_out = NamedTemporaryFile(delete=False)
         try:
             stdo = None
@@ -173,12 +178,12 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
         except Exception as e:
             raise RuntimeError(e)
         os.remove(tmp_file.name)
-        result = self.parse_external_result(tmp_out.name)
+        result = self.parse_external_result(tmp_out.name, df)
         tmp_out.close()
         os.remove(tmp_out.name)
         df_result = TCRSpecificityPredictionResult.from_dict(result)
-        df_result.index = pd.MultiIndex.from_tuples([tuple((TRA, TRB, pep)) for TRA, TRB, pep in df_result.index],
-                                                        names=['TRA', 'TRB', "Peptide"])
+        df_result.index = pd.MultiIndex.from_tuples([tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
+                                                        names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
         return df_result
 
 

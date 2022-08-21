@@ -73,6 +73,7 @@ class TCellReceptor(AntigenImmuneReceptor):
         self.TRG = None
         self.TRD = None
         self.species = species
+        self.tcr["Receptor_ID"] = self.receptor_id
         self.tcr["Species"] = self.species
         self.tcr["T-Cell-Type"] = self.cell_type
         for chain in chains:
