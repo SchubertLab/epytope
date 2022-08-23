@@ -14,13 +14,17 @@ from typing import List
 
 
 class ReceptorFactory(type):
-    def __call__(cls, receptor_id: str, chains: List, t_cell: bool = True,  cell_type: str = None, species: str = ""):
+    def __call__(cls, receptor_id: str, chains: List, t_cell: bool = True,  cell_type: str = None, species: str = None,
+                 tissue: str = None):
         if cls is AntigenImmuneReceptor:
             if t_cell:
-                return TCellReceptor(receptor_id=receptor_id, cell_type= cell_type, chains=chains, species=species)
+                return TCellReceptor(receptor_id=receptor_id, cell_type=cell_type, chains=chains, species=species,
+                                     tissue=tissue)
             else:
-                return BCellReceptor(receptor_id=receptor_id, cell_type= cell_type, chains=chains, species=species)
-        return type.__call__(cls, receptor_id=receptor_id, cell_type= cell_type, chains=chains, species=species)
+                return BCellReceptor(receptor_id=receptor_id, cell_type=cell_type, chains=chains, species=species,
+                                     tissue=tissue)
+        return type.__call__(cls, receptor_id=receptor_id, cell_type=cell_type, chains=chains, species=species,
+                             tissue=tissue)
 
 
 class AntigenImmuneReceptor(MetadataLogger, metaclass=ReceptorFactory):
@@ -29,7 +33,8 @@ class AntigenImmuneReceptor(MetadataLogger, metaclass=ReceptorFactory):
      receptor.
     """
 
-    def __init__(self, receptor_id: str, chains: List, t_cell: bool = True, cell_type:str = None, species: str = None):
+    def __init__(self, receptor_id: str, chains: List, t_cell: bool = True, cell_type:str = None, species: str = None,
+                 tissue: str = None):
         """
         :param str receptor_id: a string representing the receptor id
         :param str cell_type: a String representing the type of the B respectively T cell e.g: CD8, IGM
@@ -37,6 +42,7 @@ class AntigenImmuneReceptor(MetadataLogger, metaclass=ReceptorFactory):
         class: `epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain` type
         :param bool t_cell: true if the object is a t cell receptor otherwise it is a B cell receptor, default True
         :param str species: a string representing the species the B respectively T cell receptor originated from
+        :param str tissue: a string representing the tissue used to isolate the receptor
         """
         # Init parent type:
         MetadataLogger.__init__(self)
@@ -44,6 +50,7 @@ class AntigenImmuneReceptor(MetadataLogger, metaclass=ReceptorFactory):
         self.cell_type = cell_type
         self.species = species
         self.chains = [chain for chain in chains if isinstance(chain, ImmuneReceptorChain)]
+        self.tissue = tissue
 
     def __repr__(self):
         return "\n\n".join([str(chain) for chain in self.chains])
@@ -54,18 +61,20 @@ class TCellReceptor(AntigenImmuneReceptor):
        This class represents T cell receptor with alpha, beta, gamma and delta chains
     """
 
-    def __init__(self, receptor_id: str, chains: List, cell_type: str = None, species: str = None):
+    def __init__(self, receptor_id: str, chains: List, cell_type: str = None, species: str = None, tissue: str = None):
         """
         :param str receptor_id: a string representing the receptor id
         :param str cell_type: a String representing the type of the B respectively T cell e.g: CD8, IGM
         :param list chains: a list of chains of which the T respectively B cell receptor consists each chain has
         class: `epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain` type
         :param str species: a string representing the species the T cell receptor originated from
+        :param str tissue: a string representing the tissue used to isolate the T-cell
         """
         # Init parent type:
         MetadataLogger.__init__(self)
         self.receptor_id = receptor_id
         self.cell_type = cell_type
+        self.tissue= tissue
         self.chains = []
         self.tcr = {}
         self.TRA = None
@@ -76,6 +85,7 @@ class TCellReceptor(AntigenImmuneReceptor):
         self.tcr["Receptor_ID"] = self.receptor_id
         self.tcr["Species"] = self.species
         self.tcr["T-Cell-Type"] = self.cell_type
+        self.tcr["Tissue"] = self.tissue
         for chain in chains:
             if not isinstance(chain, ImmuneReceptorChain):
                 raise ValueError(f"{chain} should be an ImmuneReceptorChain object")
@@ -104,19 +114,21 @@ class BCellReceptor(AntigenImmuneReceptor):
         This class represents B cell receptor with light, heavy and kappa chains
     """
 
-    def __init__(self, receptor_id: str, chains: List, cell_type: str = None, species: str = None):
+    def __init__(self, receptor_id: str, chains: List, cell_type: str = None, species: str = None, tissue: str = None):
         """
         :param str receptor_id: a string representing the receptor id
         :param str cell_type: a String representing the type of the B respectively T cell e.g: CD8, IGM
         :param list chains: a list of chains of which the T respectively B cell receptor consists each chain has
         class: `epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain` type
         :param str species: a string representing the species the B cell receptor originated from
+        :param str tissue: a string representing the tissue used to isolate the B-cell
         """
         # Init parent type:
         MetadataLogger.__init__(self)
         self.receptor_id = receptor_id
         self.cell_type = cell_type
         self.chains = []
+        self.tissue = tissue
         for chain in chains:
             if not isinstance(chain, ImmuneReceptorChain):
                 raise ValueError(f"{chain} should be an ImmuneReceptorChain object")

@@ -8,6 +8,7 @@ from epytope.Core.TCREpitope import TCREpitope
 
 
 class TestTCREpitopeClass(unittest.TestCase):
+
     def setUp(self):
         self.epitope = TCREpitope(seq="RAKFKQLL", mhc="HLA-B*08")
 

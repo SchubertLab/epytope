@@ -125,8 +125,7 @@ class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction, AExternal):
                     # predict binding specificity for each TCR in TCRs to each passed epitope
                     tcr.tcr["Peptide"] = str(pep)
                     tcr.tcr["MHC"] = pep.mhc
-                    tcr.tcr["Antigen.species"] = ""
-                    tcr.tcr["Tissue"] = ""
+                    tcr.tcr["Antigen.species"] = pep.species
                     data[i] = dict(tcr.tcr)
                     i += 1
         else:
@@ -143,8 +142,7 @@ class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction, AExternal):
                     raise ValueError(f"{pep} is not of type TCREpitope")
                 tcr.tcr["Peptide"] = str(pep)
                 tcr.tcr["MHC"] = pep.mhc
-                tcr.tcr["Antigen.species"] = ""
-                tcr.tcr["Tissue"] = ""
+                tcr.tcr["Antigen.species"] = pep.species
                 data[i] = tcr.tcr
 
         return pd.DataFrame(data).transpose()
