@@ -317,9 +317,9 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
         -> pd.DataFrame:
     """
     can read and process four different datasets [vdjdb, McPAS, scirpy, IEDB] or a csv file with fixed column names
-    dataset.columns = ["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC",
-    "Species", "Antigen.species", "Tissue"]. If some values for one or more variables are unavailable, leave them as
-    blank cells
+    dataset.columns = ["Receptor_ID", 'TRA', "TRA_nt", 'TRB', "TRB_nt", "TRAV", "TRAJ", "TRBV", "TRBJ",
+    "T-Cell-Type", "Peptide", "MHC", "species", "Antigen.species", "Tissue"] If some values for one or more variables
+    are unavailable, leave them as blank cells
     :param int score: An integer representing a confidence score between 0 and 3 (0: critical information missing,
     1: medium confidence, 2: high confidence, 3: very high confidence). By processing all entries with a confidence
     score >= the passed parameter score will be kept. Default value is 1
@@ -330,16 +330,10 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
     :param str source: the source of the dataset [vdjdb, McPAS, scirpy, IEDB]. If this parameter does not be passed, the
     dataset should be a csv file with the column names mentioned above
     :return: Returns a dataframe with the following header:
-    ['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "species"]
+    ["Receptor_ID", 'TRA', "TRA_nt", 'TRB', "TRB_nt", "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide",
+    "MHC", "species", "Antigen.species", "Tissue"]
     :rtype: `pd.DataFrame`
- """
-
-    def substring(column):
-        """
-        helper function to get gene allele annotation from family name of v,j regions
-        :param column: pd.Series, where entries are the family name of v,j regions
-        """
-        return column.apply(lambda x: re.search(r"^\w*(-\d+)*", str(x)).group() if x != "" else x)
+    """
 
     def invalid(seq: str) -> bool:
         """
@@ -363,10 +357,11 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
         :return: returns the processed dataframe
         :rtype: `pd.DataFrame`
         """
-        df.loc[:, "MHC"] = df["MHC"].apply(lambda x: re.search(r".*?(?=:)|.*", str(x)).group())
+        if "MHC" in df.columns:
+            df.loc[:, "MHC"] = df["MHC"].apply(lambda x: re.search(r".*?(?=:)|.*", str(x)).group())
         df["TRA"] = df["TRA"].str.upper()
         df["TRB"] = df["TRB"].str.upper()
-        if source != "scirpy":
+        if source != "scirpy" and "Peptide" in df.columns:
             df["Peptide"] = df["Peptide"].str.upper()
             df = df[df["Peptide"].apply(lambda x: not invalid(str(x)))]
         # keep only rows, where cdr3 beta sequences consist only of amino acid characters
@@ -393,13 +388,12 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
         df = df[["meta.clone.id", "cdr3.alpha", "cdr3.beta", "v.alpha", "j.alpha", "v.beta", "j.beta",
                  "meta.cell.subset", "antigen.epitope", "mhc.a", "species", "antigen.species", "meta.tissue"]]
         # rename the selected columns
-        df.columns = ["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
-                      "Antigen.species", "Tissue"]
+        df.columns = ["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC",
+                      "Species", "Antigen.species", "Tissue"]
+        df = df.reindex(columns=df.columns.tolist() + ["TRA_nt", "TRB_nt"])
         # replace not available values with empty cells
         df = df.fillna('')
         df.loc[:, "T-Cell-Type"] = df["T-Cell-Type"].apply(lambda x: x[:3])
-        # get only gene allele annotation form family name of v, j regions respectively
-        df[["TRAV", "TRAJ", "TRBV", "TRBJ"]] = df[["TRAV", "TRAJ", "TRBV", "TRBJ"]].apply(substring)
         return process(df)
 
     # reading and processing the McPAS
@@ -407,9 +401,9 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
         if df is None:
             df = pd.read_csv(path, sep=",", encoding='cp1252', low_memory=False)
         df = df[["CDR3.alpha.aa", "CDR3.beta.aa", "TRAV", "TRAJ", "TRBV", "TRBJ", "T.Cell.Type", "Epitope.peptide",
-                 "MHC", "Species", "Pathology", "Tissue"]]
+                 "MHC", "Species", "Pathology", "Tissue", "CDR3.alpha.nt", "CDR3.beta.nt"]]
         df.columns = ['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
-                      "Antigen.species", "Tissue"]
+                      "Antigen.species", "Tissue", "TRA_nt", "TRB_nt"]
         df.insert(0, "Receptor_ID", [i for i in range(len(df))])
         # replace not available values with empty cells
         df = df.fillna('')
@@ -424,20 +418,21 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
         # that
         if "IR_VJ_1_cdr3" in df.columns:
             df = df[["IR_VJ_1_cdr3", "IR_VDJ_1_cdr3", "IR_VJ_1_v_gene", "IR_VJ_1_j_gene", "IR_VDJ_1_v_gene",
-                     "IR_VDJ_1_j_gene"]]
+                     "IR_VDJ_1_j_gene", "IR_VJ_1_cdr3_nt", "IR_VDJ_1_cdr3_nt"]]
         else:
-            df = df[["IR_VJ_1_junction_aa", "IR_VDJ_1_junction_aa", "IR_VJ_1_v_call", "IR_VJ_1_j_call", "IR_VDJ_1_v_call",
-                    "IR_VDJ_1_j_call"]]
+            df = df[["IR_VJ_1_junction_aa", "IR_VDJ_1_junction_aa", "IR_VJ_1_v_call", "IR_VJ_1_j_call",
+                     "IR_VDJ_1_v_call", "IR_VDJ_1_j_call", "IR_VJ_1_junction", "IR_VDJ_1_junction"]]
         df = df.reindex(columns=df.columns.tolist() + ["T-Cell-Type", "Peptide", "MHC", "Species", "Antigen.species",
                                                        "Tissue"])
-        df.columns = ['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
-                      "Antigen.species", "Tissue"]
+        df.columns = ['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "TRA_nt", "TRB_nt", "T-Cell-Type", "Peptide", "MHC",
+                      "Species", "Antigen.species", "Tissue"]
         df.insert(0, "Receptor_ID", [i for i in range(len(df))])
         df.replace("None", "", inplace=True)
         df.replace("nan", "", inplace=True)
         df.fillna("", inplace=True)
         df.drop_duplicates(subset=["TRA", "TRB"], keep='first', inplace=True)
         return process(df, source="scirpy")
+
     elif source and source.upper() == "IEDB":
         if df is None:
             df = pd.read_csv(path, sep=",", low_memory=False)
@@ -446,22 +441,33 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
                  'MHC Allele Names', 'Organism']]
         df["Description"] = df["Description"].apply(lambda x: x.split()[0]
                                                         if x.split()[0].isupper() and not invalid(x.split()[0]) else "")
-        df.insert(6, "T-Cell-Type", "")
-        df.insert(9, "Species", "")
-        df.insert(11, "Tissue", "")
-        df.columns = ["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species",
-                      "Antigen.species", "Tissue"]
+        df.insert(7, "T-Cell-Type", "")
+        df.insert(10, "Species", "")
+        df = df.reindex(columns=df.columns.tolist() + ["Tissue", "TRA_nt", "TRB_nt"])
+        df.columns = ["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC",
+                      "Species", "Antigen.species", "Tissue", "TRA_nt", "TRB_nt"]
         df[["TRA", "TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]] = \
             df[["TRA", "TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]].replace("nan", "")
         df.fillna("", inplace=True)
         df.drop_duplicates(subset=["TRA", "TRB", "Peptide"], keep='first', inplace=True)
         df = df[df["TRB"] != ""]
         return process(df)
-
+    elif source and source.lower() == "dash":
+        if df is None:
+            if path is None or not os.path.isfile(path):
+                raise FileNotFoundError(f"{path} is not a right path to a csv file")
+            df = pd.read_csv(path, sep=",")
+        df = df[['cdr3_a_aa', 'cdr3_b_aa', 'epitope', 'v_a_gene', 'j_a_gene', 'cdr3_a_nucseq', 'v_b_gene',
+                 'j_b_gene', 'cdr3_b_nucseq']]
+        df.columns = ["TRA", "TRB", "Peptide", "TRAV", "TRAJ", "TRA_nt", "TRBV", "TRBJ", "TRB_nt"]
+        df.drop_duplicates(subset=["TRA", "TRB"], keep="first", inplace=True)
+        df = df.reindex(columns=df.columns.tolist() + ["Receptor_ID", "T-Cell-Type", "MHC", "Species",
+                                                       "Antigen.species", "Tissue"])
+        df.fillna("", inplace=True)
+        df.loc[:, "Receptor_ID"] = [i for i in range(len(df))]
+        return df
     else:
         if df is None:
             df = pd.read_csv(path, sep=",")
         df.fillna("", inplace=True)
-        # get only gene allele annotation form family name of v, j regions respectively
-        df[["TRAV", "TRAJ", "TRBV", "TRBJ"]] = df[["TRAV", "TRAJ", "TRBV", "TRBJ"]].apply(substring)
         return process(df)

@@ -4,9 +4,9 @@
 """
 .. module:: TCRSpecificityPrediction
    :synopsis: This module contains all classes for external TCR specificity prediction methods.
-.. moduleauthor:: schubert
+.. moduleauthor:: albahah
 """
-import logging
+
 import pandas
 import pandas as pd
 from epytope.Core.Base import ATCRSpecificityPrediction, AExternal
@@ -63,16 +63,6 @@ class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction, AExternal):
             if seq.endswith("F") or seq.endswith("W"):
                 seq = seq[:-1]
         return seq
-
-    def valid_epitope(self, seq: str) -> bool:
-        """
-        check if the epitope has a specific length and if the sequence is a protein sequence
-        :param str seq: a string representing the epitope
-        :return: true if the epitope is valid
-        :rtype: bool
-        """
-
-        return True
 
     def predict(self, peptides, TCRs, repository: str, all: bool, trained_on: str=None):
         """

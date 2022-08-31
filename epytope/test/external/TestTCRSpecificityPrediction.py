@@ -1,4 +1,4 @@
-__author__ = 'schubert'
+__author__ = 'albahah'
 
 
 import unittest
@@ -99,7 +99,8 @@ class TestTCRSpecificityPredictionClass(unittest.TestCase):
         df = ir.datasets.wu2020().obs
         # get all TCR seqs in scirpy format
         df = process_dataset_TCR(df=df, source="scirpy")
-        df = df[["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Species", "Antigen.species", "Tissue"]]
+        df = df[["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Species",
+                 "Antigen.species", "Tissue"]]
         df2 = pd.DataFrame({"Peptide": [str(pep) for pep in self.epitopes],
                             "MHC": [pep.mhc for pep in self.epitopes]})
         # map each TCR seq to each epitope in the epitopes list

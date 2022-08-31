@@ -1,3 +1,5 @@
+__author__ = 'albahah'
+
 """
 Unit test for AntigenImmuneReceptor class
 """

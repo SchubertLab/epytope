@@ -5,7 +5,7 @@
 """
 .. module:: TCRSpecificityPrediction.ML
    :synopsis: This module contains all classes for ML-based TCR-epitope binding prediction.
-.. moduleauthor::
+.. moduleauthor:: albahah
 """
 
 import os
@@ -16,6 +16,7 @@ from epytope.Core.Base import AExternal
 from epytope.TCRSpecificityPrediction.External import AExternalTCRSpecificityPrediction
 from epytope.IO.FileReader import process_dataset_TCR
 from epytope.Core.Result import TCRSpecificityPredictionResult
+import re
 
 
 class ERGO(AExternalTCRSpecificityPrediction, AExternal):
@@ -130,12 +131,24 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
         :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
         :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
         """
+        def substring(column):
+            """
+            helper function to get gene allele annotation from family name of v,j regions
+            :param column: pd.Series, where entries are the family name of v,j regions
+            """
+            return column.apply(lambda x: re.search(r"^\w*(-\d+)*", str(x)).group() if x != "" else x)
+
         if path is None and df is None:
             raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
         if df is None:
-            df = process_dataset_TCR(path=path, source=source, score=score)
+            if os.path.isfile(path):
+                df = process_dataset_TCR(path=path, source=source, score=score)
+            else:
+                raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
         else:
             df = process_dataset_TCR(df=df, source=source, score=score)
+        # get only gene allele annotation form family name of v, j regions respectively
+        df[["TRAV", "TRAJ", "TRBV", "TRBJ"]] = df[["TRAV", "TRAJ", "TRBV", "TRBJ"]].apply(substring)
         ergo_df = df[['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC"]]
         ergo_df = ergo_df[(ergo_df["Peptide"] != "") & (ergo_df["TRB"] != "")]
         if not os.path.exists(os.path.join(repository, "Predict.py")):

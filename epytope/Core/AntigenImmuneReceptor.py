@@ -5,7 +5,7 @@
 .. module:: Core.AdaptiveImmuneReceptor
    :synopsis: Contains the Adaptive Immune Receptor class (TCR, BCR)
    :Note: All internal indices start at 0!
-.. moduleauthor:: schubert
+.. moduleauthor:: albahah
 """
 
 from epytope.Core.Base import MetadataLogger
@@ -95,6 +95,7 @@ class TCellReceptor(AntigenImmuneReceptor):
                 self.tcr["TRA"] = str(chain.cdr3)
                 self.tcr["TRAV"] = chain.v_gene
                 self.tcr["TRAJ"] = chain.j_gene
+                self.tcr["TRA_nt"] = chain.nuc_seq
 
             elif chain.chain_type == "TRB":
                 self.TRB = chain
@@ -102,6 +103,7 @@ class TCellReceptor(AntigenImmuneReceptor):
                 self.tcr["TRBV"] = chain.v_gene
                 self.tcr["TRBD"] = chain.d_gene
                 self.tcr["TRBJ"] = chain.j_gene
+                self.tcr["TRB_nt"] = chain.nuc_seq
 
             elif chain.chain_type == "TRG":
                 self.TRG = chain

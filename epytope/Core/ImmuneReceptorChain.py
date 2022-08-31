@@ -5,7 +5,7 @@
 .. module:: Core.ImmuneReceptorChain
    :synopsis: Contains the Immune Receptor Chain class of a B respectively T cell receptor
    :Note: All internal indices start at 0!
-.. moduleauthor:: schubert
+.. moduleauthor:: albahah
 """
 
 
@@ -19,7 +19,7 @@ class ImmuneReceptorChain(MetadataLogger):
             a B respectively T cell receptor
     """
     def __init__(self, chain_type: str, v_gene: str, d_gene: str, j_gene: str, cdr3: str, cdr1: str = None,
-                 cdr2: str = None, chain_id: str = None):
+                 cdr2: str = None, chain_id: str = None, nuc_seq: str = None):
         """
         :param str chain_type: String representing the type of the polypeptide chain,
             ["TRA", "TRB", "TRG", "TRD", "IGK", "IGH", "IGL"]
@@ -30,6 +30,7 @@ class ImmuneReceptorChain(MetadataLogger):
         :param str cdr2: String of an IUPACProtein alphabet, representing the CDR2 amino acid sequence
         :param str cdr3: String of an IUPACProtein alphabet, representing the CDR3 amino acid sequence
         :param str chain_id: it can be sequence id or the id of the subject from whom the data has been obtained
+        :param str nuc_seq: a string representing the nucleotide sequence of the chain
         """
         # Init parent type:
         MetadataLogger.__init__(self)
@@ -37,6 +38,10 @@ class ImmuneReceptorChain(MetadataLogger):
             if seq:
                 if self.invalid(seq):
                     raise ValueError(f"{seq} contains non amino acid letters")
+        if nuc_seq and not isinstance(nuc_seq, str):
+            raise ValueError(f"{nuc_seq} must be of type str")
+        if nuc_seq and not set(nuc_seq.upper()) == {"A", 'T', 'C', 'G'}:
+            raise ValueError(f"{nuc_seq} must consist of only the following bases [A, T, G, C]")
         self.chain_type = chain_type
         self.v_gene = v_gene
         self.d_gene = d_gene
@@ -45,6 +50,7 @@ class ImmuneReceptorChain(MetadataLogger):
         self.cdr2 = cdr2
         self.cdr3 = Seq(cdr3.upper())
         self.chain_id = chain_id
+        self.nuc_seq = nuc_seq.upper() if nuc_seq else None
 
     def __repr__(self):
         lines = [self.chain_type]
@@ -60,6 +66,8 @@ class ImmuneReceptorChain(MetadataLogger):
             lines.append(f"CDR2: {self.cdr2}")
         if self.cdr3:
             lines.append(f"CDR3: {self.cdr3}")
+        if self.nuc_seq:
+            lines.append(f"Nucleotide sequence: {self.nuc_seq}")
         return "\n".join(lines)
 
     def invalid(self, seq: str) -> bool:
