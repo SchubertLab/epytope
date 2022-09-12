@@ -34,9 +34,9 @@ class TestTCRSpecificityPredictionClass(unittest.TestCase):
                                 "TRBV": "TRBV12-3", "TRBJ": "TRBJ2-2", "T-Cell-Type": "CD8", "Peptide": "RAKFKQLL",
                                 "MHC": "HLA-B*08", "Species": "", "Antigen.species": "", "Tissue": ""}, index=[0])
         self.TCR = ""
-        self.vdjdb = "/home/mahmoud/Documents/Github/GoBi/TCR/epytope/Data/TCR/vdjdb_full.txt"
-        self.McPAS = "/home/mahmoud/Documents/Github/GoBi/TCR/epytope/Data/TCR/McPAS-TCR.csv"
-        self.IEDB = "/home/mahmoud/Documents/Github/GoBi/TCR/epytope/Data/TCR/tcell_receptor_table_export_1660640162.csv"
+        self.vdjdb = "/home/mahmoud/Downloads/vdjdb/vdjdb_full.txt"
+        self.McPAS = "/home/mahmoud/Downloads/McPAS-TCR.csv"
+        self.IEDB = "/home/mahmoud/Downloads/tcell_receptor_table_export_1660640162.csv"
         # path to a local ERGO-ii repository
         self.repository = "/home/mahmoud/Documents/epytope/epytope/epytope/TCRSpecificityPrediction/Models/ERGO-II"
 

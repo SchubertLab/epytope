@@ -445,7 +445,7 @@ class ATCRSimilarityMeasurement(object, metaclass=APluginRegister):
                                       path2: str = None):
         """
         computes distance metric between all TCR seqs in the passed dataframe or a path to it
-         :param str path1: a string representing a path to the first dataset(csv file), which will be precessed. Default
+        :param str path1: a string representing a path to the first dataset(csv file), which will be precessed. Default
         value is None, when the dataframe object is given
         :param `pd.DataFrame` df1: first dataset(`pd.DataFrame). Default value is None, if the path1 is given
         :param str path2: a string representing a path to the second dataset(csv file), which will be precessed. Default
