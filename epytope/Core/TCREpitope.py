@@ -5,7 +5,7 @@
 .. module:: Core.TCREpitope
    :synopsis: Contains the TCREpitope class
    :Note: All internal indices start at 0!
-.. moduleauthor:: schubert
+.. moduleauthor:: albahah
 """
 
 from epytope.Core.Peptide import Peptide

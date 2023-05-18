@@ -403,7 +403,62 @@ def deprecated(func):
     new_func.__dict__.update(func.__dict__)
     return new_func
 
+
+class ATCRSimilarityMeasurement(object, metaclass=APluginRegister):
+
+    @property
+    @abc.abstractmethod
+    def name(self):
+        """
+        The name of the predictor
+        """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def version(cls):
+        """
+        The version of the predictor
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def compute_distance(self, rep1, rep2=None):
+        """
+        computes pairwise similarity for all TCR seqs in one repertoire or in two repertoires
+        :param rep1: :class:`~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor` or
+        list(:class:`~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor`) representing the first repertoire
+        :type rep1: :class:`~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor` or
+        list(:class:`~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor`
+        :param rep2: :class:`~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor` or
+        list(:class:`~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor`) representing the second repertoire.
+        Default value is None, in case the distance measurement should be done for TCR seqs in the first repertoire.
+        :type rep2: :class:`~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor` or
+        list(:class:`~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor`)
+        :return: Returns a :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult`
+        :rtype: :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult`
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def compute_distance_from_dataset(self, df1: pd.DataFrame = None, path1: str = None, df2: pd.DataFrame = None,
+                                      path2: str = None):
+        """
+        computes distance metric between all TCR seqs in the passed dataframe or a path to it
+        :param str path1: a string representing a path to the first dataset(csv file), which will be precessed. Default
+        value is None, when the dataframe object is given
+        :param `pd.DataFrame` df1: first dataset(`pd.DataFrame). Default value is None, if the path1 is given
+        :param str path2: a string representing a path to the second dataset(csv file), which will be precessed. Default
+        value is None, when the dataframe object is given.
+        :param `pd.DataFrame` df2: second dataset(`pd.DataFrame). Default value is None, if the path2 is given.
+        :return: A :class:`~epytope.Core.TCRSimilarityMeasurementResult` object
+        :rtype: :class:`~epytope.Core.TCRSimilarityMeasurementResult`
+        """
+        raise NotImplementedError
+
+
 class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
+
     @property
     @abc.abstractmethod
     def name(self):
@@ -439,17 +494,6 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def valid_epitope(seq: str) -> bool:
-        """
-        check if the epitope has a specific length and if the sequence is a protein sequence
-        :param str seq: a string representing the epitope
-        :return: true if the epitope is valid
-        :rtype: bool
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
     def canonical_CDR(seq: str) -> bool:
         """
         check if the CDR sequence starts with a Cysteine and ends with a Phenylalanine
@@ -473,30 +517,28 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def predict(self, peptides, TCRs, repository: str, all: bool, dataset: str = None, trained_on: str=None):
+    def predict(self, peptides, TCRs, repository: str, all: bool, trained_on: str = None):
         """
         Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide
         If alleles is not given, predictions for all valid alleles of the predictor is performed. If, however,
         a list of alleles is given, predictions for the valid allele subset is performed.
         :param peptides: The peptide objects for which predictions should be performed
-        :type peptides: :class:`~epytope.Core.Peptide.Peptide` or list(:class:`~epytope.Core.Peptide.Peptide`)
+        :type peptides: :class:`~epytope.Core.TCREpitop.TCREpitop` or list(:class:`~epytope.Core.TCREpitop.TCREpitop`)
         :param TCRs: T cell receptor objects
         :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
         list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
         :param str repository: a path to a local github repository of the desired predictor
         :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
         the prediction will be preformed in the same order of the passed peptides and TCRs objects
-        :param str dataset: specifying the dataset the model trained on
         :param str trained_on: specifying the dataset the model trained on
-        :return: Returns a :class:`~epytope.Core.Result.AResult` object for the specified
-                 :class:`~epytope.Core.Peptide.Peptide` and :class:`~epytope.Core.Allele.Allele`
-        :rtype: :class:`~epytope.Core.Result.AResult`
+        :return: Returns a :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`
+        :rtype: :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`
         """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def predict_from_dataset(self, repository: str, path : str = None, df: pd.DataFrame = None, source: str = "",
-                             score: int = 1, trained_on: str=None):
+    def predict_from_dataset(self, repository: str, path: str = None, df: pd.DataFrame = None, source: str = "",
+                             score: int = 1, trained_on: str = None):
         """
         Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide.
         The path should lead to csv file with fixed column names dataset.columns = ['TRA', 'TRB', "TRAV", "TRAJ",
