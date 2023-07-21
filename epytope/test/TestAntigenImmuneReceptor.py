@@ -1,3 +1,5 @@
+__author__ = 'albahah'
+
 """
 Unit test for AntigenImmuneReceptor class
 """
@@ -7,7 +9,7 @@ from epytope.Core.AntigenImmuneReceptor import AntigenImmuneReceptor, BCellRecep
 from epytope.Core.ImmuneReceptorChain import ImmuneReceptorChain
 
 
-class TestImmuneReceptorChainClass(unittest.TestCase):
+class TestAntigenImmuneReceptorClass(unittest.TestCase):
     def setUp(self):
         alpha = ImmuneReceptorChain(chain_id="57", chain_type="TRA", v_gene="TRAV26-1", d_gene=None,
                                          j_gene="TRAJ37", cdr3="IVVRSSNTGKLI", cdr1="TISGNEY", cdr2="GLKNN")
