@@ -64,7 +64,7 @@ class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction, AExternal):
                 seq = seq[:-1]
         return seq
 
-    def predict(self, peptides, TCRs, repository: str, all: bool, trained_on: str=None):
+    def predict(self, peptides, TCRs, repository: str, all: bool, **kwargs):
         """
         Overwrites ATCRSpecificityPrediction.predict
 
@@ -79,7 +79,15 @@ class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction, AExternal):
         :param str repository: a path to a local github repository of the desired predictor
         :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
         the prediction will be preformed in the same order of the passed peptides and TCRs objects
-        :param str trained_on: specifying the dataset the model trained on
+        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
+        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
+        :param trained_model a string representing a path to the trained model directory of TITAN, which can be
+        downloaded from "https://ibm.ent.box.com/v/titan-dataset"
+        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
+        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
+        Default value is False.
+        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
+        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
         :return: Returns a nested dictionary
         {0:{'cdr3.alpha': '...', 'v.alpha': '...', ..., "antigen.epitope": '...'}, 1:{...},...}
         , which contains TCRs with the corresponding epitopes, for which the prediction will
@@ -99,7 +107,7 @@ class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction, AExternal):
                 if len(TCRs) == 0:
                     raise ValueError("At least one AntigenImmuneReceptor object should be passed")
             else:
-                raise ValueError(f"TCRs should an AntigenImmuneReceptor object or a list of AntigenImmuneReceptor "
+                raise ValueError(f"TCRs should be an AntigenImmuneReceptor object or a list of AntigenImmuneReceptor "
                                  f"objects")
         data = {}
         if all:

@@ -33,7 +33,7 @@ class AntigenImmuneReceptor(MetadataLogger, metaclass=ReceptorFactory):
      receptor.
     """
 
-    def __init__(self, receptor_id: str, chains: List, t_cell: bool = True, cell_type:str = None, species: str = None,
+    def __init__(self, receptor_id: str, chains: List, t_cell: bool = True, cell_type: str = None, species: str = None,
                  tissue: str = None):
         """
         :param str receptor_id: a string representing the receptor id

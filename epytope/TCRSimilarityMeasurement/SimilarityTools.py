@@ -191,6 +191,14 @@ class TCRDist3(TCRSimilarityMeasurement):
         }
 
         def prepare_input(df: pd.DataFrame, seq_type: str):
+            """
+            Helper function to adjust the input for tcrdist3
+            :param pd.DataFrame df: a dataframe to be adjusted
+            :param str seq_type: a string representing the sequence type, for which the tcrdist will be computed.
+            :return two dataframes ont is the adjusted dataframe with required columns for tcrdist3. The other includes
+            the required columns for the end result
+            :rtype pandas.DataFrame, pandas.DataFrame
+            """
             pro_df = df[["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ"]].copy(deep=True)
             pro_df.columns = ["Receptor_ID", "cdr3_a_aa", "cdr3_b_aa", "v_a_gene", "j_a_gene", "v_b_gene", "j_b_gene"]
             # For v_x_gene, include the full IMGT gene name and allele (e.g., TRBV1*01).
@@ -220,6 +228,19 @@ class TCRDist3(TCRSimilarityMeasurement):
 
         def default_TCRrep(df1: pd.DataFrame, df2: pd.DataFrame = None, organism: str = "human",
                            chains: list = ["alpha"]) -> TCRrep:
+            """
+            Helper function for creating a TCRrep object using the default parameters for tcrdist3
+            :param pd.DataFrame df1: first dataframe representing the first TCR repertoire
+            :param pd.DataFrame df2: second dataframe representing the second repertoire. Default value is None, thus
+            in this case the similarity will be computed for all seqs pairwise in the first repertoire
+            :param str organism: a string representing the species, from which the trc seqs originated. Be aware
+            tcrdist3 supports only two species human and mouse, in order to get cdr1, cdr2, cdr2.5 given the
+            corresponding v gene
+            :param list chains: a list of sequences type, for which the similarity will be computed. It can be alpha,
+            beta or both.
+            :return: a TCRrep object contains all similarity scores for the selected seqs
+            :rtype: tcrdist.repertoire.TCRrep
+            """
             if organism not in ["mouse", "human"]:
                 raise ValueError("tcrdist3 supports only two species: human and mouse")
             if df2 is not None:
@@ -236,6 +257,11 @@ class TCRDist3(TCRSimilarityMeasurement):
                 return tr
 
         def cols(df: pd.DataFrame) -> dict:
+            """
+            Helper function to get the required keys according to the given dataframe
+            :param pd.DataFrame df: a dataframe representing the repertoire
+            :return: a list of required keys
+            """
             keys = []
             for col in df.columns:
                 if col in ["pmhc_a_aa", "cdr2_a_aa", "cdr1_a_aa", "pmhc_b_aa", "cdr2_b_aa", "cdr1_b_aa"]:
@@ -243,6 +269,12 @@ class TCRDist3(TCRSimilarityMeasurement):
             return keys
 
         def get_kargs(keys: list, metric: str = "nb_vector_tcrdist", **kwargs) -> dict:
+            """
+            Helper function to set the parameters for the selected metric
+            :param list keys: a list of required list
+            :param str metric: the name of metric used to compute the similarity
+            :return a dictionary with set of parameters for each key
+            """
             kargs = {}
             if metric == "nb_vector_tcrdist":
                 for k in keys:
@@ -291,6 +323,13 @@ class TCRDist3(TCRSimilarityMeasurement):
             return kargs
 
         def alpha(df1: pd.DataFrame, df2: pd.DataFrame = None, metric: str = "nb_vector_tcrdist", **kwargs) -> dict:
+            """
+            Helper function to compute the pairwise similarity for alpha seqs
+            :param pd.DataFrame df1: a dataframe representing the first repertoire
+            :param pd.DataFrame df2: a dataframe representing the second repertoire
+            :param str metric: the name of metric used to compute the similarity
+            :return: a dictionary of similarity scores for each key(sequence type)
+            """
             if "cdr3_a_aa" not in df1.columns:
                 raise ValueError("cdr3_a_aa column is required")
             keys = [col for col in cols(df1) if col[5] == "a"]
@@ -319,6 +358,13 @@ class TCRDist3(TCRSimilarityMeasurement):
                 return result
 
         def beta(df1: pd.DataFrame, df2: pd.DataFrame = None, metric: str = "nb_vector_tcrdist", **kwargs) -> dict:
+            """
+            Helper function to compute the pairwise similarity for beta seqs
+            :param pd.DataFrame df1: a dataframe representing the first repertoire
+            :param pd.DataFrame df2: a dataframe representing the second repertoire
+            :param str metric: the name of metric used to compute the similarity
+            :return: a dictionary of similarity scores for each key(sequence type)
+            """
             if "cdr3_b_aa" not in df1.columns:
                 raise ValueError("cdr3_b_aa column is required")
             keys = [col for col in cols(df1) if col[5] == "b"]
@@ -348,6 +394,13 @@ class TCRDist3(TCRSimilarityMeasurement):
 
         def alpha_beta(df1: pd.DataFrame, df2: pd.DataFrame = None, metric: str = "nb_vector_tcrdist",
                        **kwargs) -> dict:
+            """
+            Helper function to compute the pairwise similarity for alpha and beta seqs
+            :param pd.DataFrame df1: a dataframe representing the first repertoire
+            :param pd.DataFrame df2: a dataframe representing the second repertoire
+            :param str metric: the name of metric used to compute the similarity
+            :return: a dictionary of similarity scores for each key(sequence type)
+            """
             result = {}
             if df2 is not None:
                 result = alpha(df1=df1, df2=df2, metric=metric, **kwargs)
@@ -358,6 +411,13 @@ class TCRDist3(TCRSimilarityMeasurement):
             return result
 
         def both(df1: pd.DataFrame, df2: pd.DataFrame = None, metric: str = "nb_vector_tcrdist", **kwargs) -> dict:
+            """
+            Helper function to compute the pairwise similarity for alpha and beta seqs combined
+            :param pd.DataFrame df1: a dataframe representing the first repertoire
+            :param pd.DataFrame df2: a dataframe representing the second repertoire
+            :param str metric: the name of metric used to compute the similarity
+            :return: a dictionary of similarity scores for each key(sequence type)
+            """
             if "cdr3_b_aa" not in df1.columns or "cdr3_a_aa" not in df1.columns:
                 raise ValueError("cdr3_b_aa and cdr3_a_aa columns are required")
             keys = cols(df1)
