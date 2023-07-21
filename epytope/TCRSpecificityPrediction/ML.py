@@ -14,11 +14,10 @@ import pandas as pd
 from tempfile import NamedTemporaryFile
 from epytope.Core.Base import AExternal
 from epytope.TCRSpecificityPrediction.External import AExternalTCRSpecificityPrediction
-from epytope.IO.FileReader import process_dataset_TCR
 from epytope.Core.Result import TCRSpecificityPredictionResult
 
 
-class ERGO(AExternalTCRSpecificityPrediction, AExternal):
+class Ergo2(AExternalTCRSpecificityPrediction, AExternal):
     """
     Implements ERGO, a deep learning based method for predicting TCR and epitope peptide binding.
 
@@ -185,5 +184,3 @@ class ERGO(AExternalTCRSpecificityPrediction, AExternal):
         df_result.index = pd.MultiIndex.from_tuples([tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
                                                         names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
         return df_result
-
-

@@ -1,5 +1,5 @@
 from epytope.Core.Base import ATCRSpecificityPrediction
-from epytope.TCRSpecificityPrediction.External import *
+# from epytope.TCRSpecificityPrediction.External import *
 
 try:
     from fred_plugin import *

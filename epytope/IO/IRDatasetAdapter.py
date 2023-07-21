@@ -137,7 +137,7 @@ class MetaclassTCRAdapter(type):
                              "supported by epytope and inherits ATCRDatasetAdapter")
 
 
-class TCRDatasetAdapterFactory(metaclass=MetaclassTCRAdapter):
+class IRDatasetAdapterFactory(metaclass=MetaclassTCRAdapter):
     @staticmethod
     def available_methods():
         """

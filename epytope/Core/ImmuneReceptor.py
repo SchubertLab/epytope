@@ -2,10 +2,10 @@
 # license.  Please see the LICENSE file that should have been included
 # as part of this package.
 """
-.. module:: Core.AdaptiveImmuneReceptor
-   :synopsis: Contains the Adaptive Immune Receptor class (TCR, BCR)
+.. module:: Core.ImmuneReceptor
+   :synopsis: Contains the Immune Receptor classes for T cell receptors (TCRs) and B cell receptors (BCRs)
    :Note: All internal indices start at 0!
-.. moduleauthor:: schubert
+.. moduleauthor:: albahah, drost
 """
 
 from epytope.Core.Base import MetadataLogger
@@ -13,134 +13,128 @@ from epytope.Core.ImmuneReceptorChain import ImmuneReceptorChain
 from typing import List
 
 
-class ReceptorFactory(type):
-    def __call__(cls, receptor_id: str, chains: List, t_cell: bool = True,  cell_type: str = None, species: str = None,
-                 tissue: str = None):
-        if cls is AntigenImmuneReceptor:
-            if t_cell:
-                return TCellReceptor(receptor_id=receptor_id, cell_type=cell_type, chains=chains, species=species,
-                                     tissue=tissue)
-            else:
-                return BCellReceptor(receptor_id=receptor_id, cell_type=cell_type, chains=chains, species=species,
-                                     tissue=tissue)
-        return type.__call__(cls, receptor_id=receptor_id, cell_type=cell_type, chains=chains, species=species,
-                             tissue=tissue)
+class ImmuneReceptorFactory(type):
+    def __call__(cls, receptor_chains, cell_type=None, organism=None):
+        if cls is ImmuneReceptor:
+            if cell_type is None:
+                pass
+            elif "T cell" in cell_type:
+                return TCellReceptor(receptor_chains, cell_type, organism)
+            elif "B cell" in cell_type:
+                return BCellReceptor(receptor_chains, cell_type, organism)
+        return type.__call__(cls, receptor_chains, cell_type, organism)
 
 
-class AntigenImmuneReceptor(MetadataLogger, metaclass=ReceptorFactory):
+class ImmuneReceptor(MetadataLogger, metaclass=ImmuneReceptorFactory):
     """
-    :class:`~epytope.Core.AdaptiveImmuneReceptor.AdaptiveImmuneReceptor` corresponding to exactly one T or B cell
-     receptor.
+    This class represents a Immune receptor (TCR or BCR) and stores additional information.
     """
 
-    def __init__(self, receptor_id: str, chains: List, t_cell: bool = True, cell_type:str = None, species: str = None,
-                 tissue: str = None):
+    def __init__(self, receptor_chains, cell_type=None, organism=None):
         """
-        :param str receptor_id: a string representing the receptor id
-        :param str cell_type: a String representing the type of the B respectively T cell e.g: CD8, IGM
-        :param list chains: a list of chains of which the T respectively B cell receptor consists each chain has
-        class: `epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain` type
-        :param bool t_cell: true if the object is a t cell receptor otherwise it is a B cell receptor, default True
-        :param str species: a string representing the species the B respectively T cell receptor originated from
-        :param str tissue: a string representing the tissue used to isolate the receptor
+        :param receptor_chains: List containing the immune receptor chains (either alpha-beta, gamma-delta, heavy-light)
+        :type receptor_chains: list(:class: `~epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain`)
+        :param str cell_type: cell type in which the IR was found (e.g. CD8 T cell, kappa B cell)
+        :param str organism: origin of the immune receptor
         """
-        # Init parent type:
         MetadataLogger.__init__(self)
-        self.receptor_id = receptor_id
-        self.cell_type = cell_type
-        self.species = species
-        self.chains = [chain for chain in chains if isinstance(chain, ImmuneReceptorChain)]
-        self.tissue = tissue
+        self.cell_type = cell_type if cell_type is not None else 'Immune cell'
+        self.organism = organism
+
+        self.chains = {}
+        for chain in receptor_chains:
+            chain_type = chain.chain_type
+            if chain_type in self.chains:
+                print(f"Duplicated chains of same type detected in {receptor_chains}")
+            else:
+                self.chains[chain_type] = chain
+
+    def get_vj_chain(self):
+        for name in ['TRA', 'TRG', 'IL']:
+            if name in self.chains:
+                return self.chains[name]
+        return None
+
+    def get_vdj_chain(self):
+        for name in ['TRB', 'TRD', 'IH']:
+            if name in self.chains:
+                return self.chains[name]
+        return None
+
+    def get_chain(self, chain_type):
+        if chain_type == "VJ":
+            return self.get_vj_chain()
+        if chain_type == "VDJ":
+            return self.get_vdj_chain()
+        raise ValueError(f"{chain_type} not in ['VJ', 'VDJ']")
+
+    def get_chain_attribute(self, attribute, chain_type):
+        chain = self.get_chain(chain_type)
+        if chain is None:
+            return ""
+        return getattr(chain, attribute)
 
     def __repr__(self):
-        return "\n\n".join([str(chain) for chain in self.chains])
+        lines = [f"{self.cell_type.upper()} RECEPTOR".strip()]
+        if self.organism:
+            lines.append(f"in {self.organism}")
+        for chain in self.chains.values():
+            lines.append(" " + str(chain).replace('\n', '\n '))
+        return "\n".join(lines)
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def __hash__(self):
+        return hash(str(self))
 
 
-class TCellReceptor(AntigenImmuneReceptor):
+class TCellReceptor(ImmuneReceptor):
     """
-       This class represents T cell receptor with alpha, beta, gamma and delta chains
+       This class represents T cell receptor with alpha, beta, gamma and delta chains.
     """
 
-    def __init__(self, receptor_id: str, chains: List, cell_type: str = None, species: str = None, tissue: str = None):
+    def __init__(self, receptor_chains, cell_type=None, organism=None):
         """
-        :param str receptor_id: a string representing the receptor id
-        :param str cell_type: a String representing the type of the B respectively T cell e.g: CD8, IGM
-        :param list chains: a list of chains of which the T respectively B cell receptor consists each chain has
-        class: `epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain` type
-        :param str species: a string representing the species the T cell receptor originated from
-        :param str tissue: a string representing the tissue used to isolate the T-cell
+        :param receptor_chains: List containing the immune receptor chains (either alpha-beta or gamma-delta)
+        :type receptor_chains: list(:class: `~epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain`)
+        :param str cell_type: cell type in which the IR was found (e.g. CD8 T cell)
+        :param str organism: origin of the immune receptor
         """
-        # Init parent type:
+        ImmuneReceptor.__init__(self, receptor_chains, "T cell", organism)
+
+        self.cd4_cd8_type = "CD4" if "CD4" in cell_type.upper() else "CD8" if "CD8" in cell_type.upper() else ''
+        self.alphabeta_gamadelta_type = self.assign_alphabeta_gammadelta_type()
+        self.cell_type = " ".join([self.cd4_cd8_type, self.alphabeta_gamadelta_type, self.cell_type]).strip()
+
+    def assign_alphabeta_gammadelta_type(self):
+        """
+        Determine whether the TCR is of alpha-beta, gamma-delta, or mixed type based on its chains.
+        :return: str of ['alpha-beta', 'gamma-delta', 'conflicting']
+        """
+        alphabeta = ("TRA" in self.chains) or ("TRB" in self.chains)
+        gammadelta = ("TRG" in self.chains) or ("TRD" in self.chains)
+        if alphabeta and not gammadelta:
+            return "alpha-beta"
+        if not alphabeta and gammadelta:
+            return "gamma-delta"
+        return "conflicting"
+
+
+class BCellReceptor(ImmuneReceptor):
+    """
+        This class represents B cell receptor with light (lambda or kappa) and heavy chains.
+    """
+
+    def __init__(self, receptor_chains, cell_type=None, organism=None):
+        """
+        :param receptor_chains: List containing the immune receptor chains (heavy-light)
+        :type receptor_chains: list(:class: `~epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain`)
+        :param str cell_type: cell type in which the IR was found (e.g. kappa B cell)
+        :param str organism: origin of the immune receptor
+        """
         MetadataLogger.__init__(self)
-        self.receptor_id = receptor_id
-        self.cell_type = cell_type
-        self.tissue= tissue
-        self.chains = []
-        self.tcr = {}
-        self.TRA = None
-        self.TRB = None
-        self.TRG = None
-        self.TRD = None
-        self.species = species
-        self.tcr["Receptor_ID"] = self.receptor_id
-        self.tcr["Species"] = self.species
-        self.tcr["T-Cell-Type"] = self.cell_type
-        self.tcr["Tissue"] = self.tissue
-        for chain in chains:
-            if not isinstance(chain, ImmuneReceptorChain):
-                raise ValueError(f"{chain} should be an ImmuneReceptorChain object")
-            self.chains.append(chain)
-            if chain.chain_type == "TRA":
-                self.TRA = chain
-                self.tcr["TRA"] = str(chain.cdr3)
-                self.tcr["TRAV"] = chain.v_gene
-                self.tcr["TRAJ"] = chain.j_gene
-
-            elif chain.chain_type == "TRB":
-                self.TRB = chain
-                self.tcr["TRB"] = str(chain.cdr3)
-                self.tcr["TRBV"] = chain.v_gene
-                self.tcr["TRBD"] = chain.d_gene
-                self.tcr["TRBJ"] = chain.j_gene
-
-            elif chain.chain_type == "TRG":
-                self.TRG = chain
-            else:
-                self.TRD = chain
-
-
-class BCellReceptor(AntigenImmuneReceptor):
-    """
-        This class represents B cell receptor with light, heavy and kappa chains
-    """
-
-    def __init__(self, receptor_id: str, chains: List, cell_type: str = None, species: str = None, tissue: str = None):
-        """
-        :param str receptor_id: a string representing the receptor id
-        :param str cell_type: a String representing the type of the B respectively T cell e.g: CD8, IGM
-        :param list chains: a list of chains of which the T respectively B cell receptor consists each chain has
-        class: `epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain` type
-        :param str species: a string representing the species the B cell receptor originated from
-        :param str tissue: a string representing the tissue used to isolate the B-cell
-        """
-        # Init parent type:
-        MetadataLogger.__init__(self)
-        self.receptor_id = receptor_id
-        self.cell_type = cell_type
-        self.chains = []
-        self.tissue = tissue
-        for chain in chains:
-            if not isinstance(chain, ImmuneReceptorChain):
-                raise ValueError(f"{chain} should be an ImmuneReceptorChain object")
-            self.chains.append(chain)
-        self.IGK = None
-        self.IGH = None
-        self.IGL = None
-        self.species = species
-        for chain in self.chains:
-            if chain.chain_type == "IGK":
-                self.IGK = chain
-            elif chain.chain_type == "IGH":
-                self.IGH = chain
-            else:
-                self.IGL = chain
+        ImmuneReceptor.__init__(self, receptor_chains, "B cell", organism)
+        self.kappa_lambda_type = "kappa" if "kappa" in cell_type.lower() else "lambda" \
+            if "lambda" in cell_type.lower() else None
+        self.cell_type = " ".join([self.kappa_lambda_type, self.cell_type])

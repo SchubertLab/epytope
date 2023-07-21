@@ -2,7 +2,7 @@
 # license.  Please see the LICENSE file that should have been included
 # as part of this package.
 """
-.. module:: Core.Epitope
+.. module:: Core.TCREpitope
    :synopsis: Contains the TCREpitope class
    :Note: All internal indices start at 0!
 .. moduleauthor:: albahah, drost
@@ -11,9 +11,9 @@
 from epytope.Core.Base import MetadataLogger
 
 
-class Epitope(MetadataLogger):
+class TCREpitope(MetadataLogger):
     """
-    This class encapsulates a :class:`~epytope.Core.Epitope.Epitope`, belonging to one or several
+    This class encapsulates a :class:`~epytope.Core.TCREpitope.TCREpitope`, belonging to one or several
     :class:`~epytope.Core.Peptide.Peptide`.
     .. note:: For accessing and manipulating the sequence see also :mod:`Bio.Seq.Seq` (from Biopython)
     """
@@ -28,14 +28,18 @@ class Epitope(MetadataLogger):
         """
         MetadataLogger.__init__(self)
         self.peptide = peptide
-        self.alleles = alleles
+        self.alleles = alleles if isinstance(alleles, list) else [alleles]
         self.organism = organism
 
     def __repr__(self):
-        lines = [f"EPITOPE:\n {self.peptide}"]
+        lines = [f"TCR EPITOPE:\n PEPTIDE {self.peptide}"]
         if self.alleles is not None:
-            for allele in self.alleles:
-                lines.append(f"bound by ALLELE: {allele}")
+            line = " bound by ALLELE: "
+            for i, allele in enumerate(self.alleles):
+                if i != 0:
+                    line += ", "
+                line += f"{allele}"
+            lines.append(line)
         return '\n'.join(lines)
 
     def __eq__(self, other):
