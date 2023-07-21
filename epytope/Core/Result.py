@@ -18,6 +18,7 @@ from epytope.Core.Peptide import Peptide
 from copy import deepcopy
 from sys import exit
 import logging
+import math
 
 
 class AResult(pandas.DataFrame, metaclass=abc.ABCMeta):
@@ -392,10 +393,10 @@ class TAPPredictionResult(AResult):
 class TCRSpecificityPredictionResult(AResult):
     """
         A :class:`~epytope.Core.Result.TCRSpecificityPredictionResult` object is a :class:`pandas.DataFrame` with
-        single-indexing, where column  Ids are the prediction scores fo the different prediction methods, and row Ids
+        single-indexing, where column Ids are the prediction scores of the different prediction methods, and row Ids
         are the alpha and beta chains of an AntigenImmuneReceptor object and class:`~epytope.Core.TCREpitope.TCREpitope`
         object.
-        CleavageFragmentPredictionResult:
+        TCRSpecificityPredictionResult:
         +--------------+-------------+-------------+-------------+
         |      TRA     |      TRB    |   Peptide   | Method Name |
         +==============+=============+=============+=============+
@@ -442,3 +443,111 @@ class TCRSpecificityPredictionResult(AResult):
             others = [others]
 
         return TCRSpecificityPredictionResult(pandas.concat([self] + others, axis=1))
+
+
+class TCRSimilarityMeasurementResult(AResult):
+    """
+        A :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult` object is a :class:`pandas.DataFrame` with
+        single-indexing, where column Ids are the similarity scores of the different similarity methods, and row Ids
+        are the Receptor_ID , alpha and beta chains of the first and second AntigenImmuneReceptor object respectively.
+        TCRSimilarityMeasurementResult:
+        +---------------+---------------+--------------+----------------+--------------+-------------+--------------------------------------+
+        | Method                                                                                     |    Method Name                       |
+        +- - - - - - - -+- - - - - - - -+- - - - - - -+ - - - - - - - - +- - - - - - - + - - - - - - +- - - - -+- - - - - +- - - - +- - - - +
+        | Chain                                                                                      |  cdr3_a |  cdr3_b | alpha  |  beta   |
+        +- - - - - - - -+- - - - - - - -+- - - - - - -+ - - - - - - - - +- - - - - - - + - - - - - - +- - - - -+- - - - - +- - - - +- - - - +
+        |(Rep1,recep_id)| (Rep1,cdr3_a)| (Rep1,cdr3_b)| (Rep2,recep_id)| (Rep2,cdr3_a)| (Rep2,cdr3_b)|                                      |
+        +===============+==============+==============+================+==============+==============+=========+=========+========+========+
+        |        0      |     TRA1     |     TRB1     |        0       |    TRA2      |     TRB2     |    53   |    35   |   65   |   75   |
+        +--------------+---------------+--------------+----------------+--------------+--------------+---------+---------+--------+--------+
+        |              |               |              |        1       |    TRA2      |     TRB2     |    53   |    35   |   65   |   75   |
+        +--------------+---------------+--------------+----------------+--------------+--------------+---------+---------+--------+--------+
+    """
+
+    def filter_result(self, expressions, seq_type):
+        """
+        Filters a result data frame based on a specified expression consisting of a list of triple with
+        (method_name, comparator, threshold). The expression is applied to each row. If any of the columns fulfill the
+        criteria the row remains.
+        :param list((str, comparator, float)) expressions: A list of triples consisting of (method_name, comparator,
+                                                         threshold)
+        :return: A new filtered result object
+        :rtype: :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult`
+        """
+        if isinstance(expressions, tuple):
+            expressions = [expressions]
+        df = deepcopy(self)
+        methods = list(set(df.columns.get_level_values(0)))
+        seq_types = list(set(df.columns.get_level_values(1)))
+        if seq_type not in seq_types:
+            raise ValueError(f"Specified seq_type {seq_type} does not match seq_types of data frame {seq_types}.")
+
+        for expr in expressions:
+            method, comp, thr = expr
+            if method not in methods:
+                raise ValueError(f"Specified method {method} does not match methods of data frame {methods}.")
+            else:
+                filt = comp(df.xs(method, axis=1).xs(seq_type, axis=1), thr).values
+                df = df.loc[filt]
+
+        return TCRSimilarityMeasurementResult(df)
+
+    def merge_results(self, others):
+        """
+        Merges results of type :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult` and returns the merged
+        result
+        :param others: A (list of) :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult` object(s)
+        :type others: list(:class:`~epytope.Core.Result.TCRSimilarityMeasurementResult`) or
+                      :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult`
+        :return: new merged :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult` object
+        :rtype: :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult`
+        """
+        if type(others) == type(self):
+            others = [others]
+        return TCRSimilarityMeasurementResult(pandas.concat([self] + others, axis=1))
+
+    def from_dict(d: dict, idx: pandas.DataFrame, method: str, filt: bool = False):
+        """
+        Create :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult` object from dictionary holding distances for
+         cdr3 alpha, cdr3 beta, alpha, beta or alpha and beta combined.
+        :param d: dictionary with the following structure: {sequence type: distances `numpy.ndarray`}
+        :param pandas.DataFrame idx: a dataframe with the following header:
+        [("Rep1", "recep_id"), ("Rep2", "recep_id"), ("Rep1", "cdr3_a"), ("Rep1", "cdr3_b"), ("Rep2", "cdr3_a"),
+        ("Rep2", "cdr3_b")] representing the one tcr from each two repertoires  and the corresponding sequences as rows.
+        :param method: str specifying the tool used to measure the similarity
+        :param filt: boolean value to filter all pairwise computed similarity for one seq compared with itself and avoid
+        displaying the similarity score for two seqs more than one time in one repertoire. Default value is False. In
+        this case no pairs will be eliminated by computing the scores for two repertoires.
+        :return: A new :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult` object
+        :rtype: :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult`
+        """
+        seq_type = numpy.asarray(list(d.keys()))
+        meth = numpy.repeat(method, len(seq_type))
+        multi_cols = pandas.MultiIndex.from_arrays([meth, seq_type], names=["Method", "Chain"])
+        length = math.sqrt(len(idx))
+        indices = []
+        last_idx = length*(length-1)
+        j = 1
+        round = 1
+        if filt:
+            while j < last_idx:
+                if j % length == 0:
+                    round += 1
+                    j += round
+                indices.append(j)
+                j += 1
+        if filt:
+            df = pandas.DataFrame(int(0), index=pandas.MultiIndex.from_frame(idx.iloc[indices, :]), columns=multi_cols)
+        else:
+            df = pandas.DataFrame(int(0), index=pandas.MultiIndex.from_frame(idx), columns=multi_cols)
+        # Fill DataFrame
+        tuples = list(idx.itertuples(index=False))
+        for seq, scores in d.items():
+                scores = scores.flatten()
+                if filt:
+                    for index in indices:
+                        df.loc[tuples[index], (method, seq)] = scores[index]
+                else:
+                    for i, index in enumerate(tuples):
+                        df.loc[index, (method, seq)] = scores[i]
+        return TCRSimilarityMeasurementResult(df)
