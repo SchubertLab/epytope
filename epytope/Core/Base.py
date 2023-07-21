@@ -404,7 +404,6 @@ def deprecated(func):
 
 
 class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
-
     @property
     @abc.abstractmethod
     def name(self):
