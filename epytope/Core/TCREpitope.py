@@ -2,46 +2,44 @@
 # license.  Please see the LICENSE file that should have been included
 # as part of this package.
 """
-.. module:: Core.TCREpitope
+.. module:: Core.Epitope
    :synopsis: Contains the TCREpitope class
    :Note: All internal indices start at 0!
-.. moduleauthor:: schubert
+.. moduleauthor:: albahah, drost
 """
 
-from epytope.Core.Peptide import Peptide
+from epytope.Core.Base import MetadataLogger
 
 
-class TCREpitope(Peptide):
+class Epitope(MetadataLogger):
     """
-    This class encapsulates a :class:`~epytope.Core.TCREpitope.TCREpitope`, belonging to one or several
+    This class encapsulates a :class:`~epytope.Core.Epitope.Epitope`, belonging to one or several
     :class:`~epytope.Core.Peptide.Peptide`.
     .. note:: For accessing and manipulating the sequence see also :mod:`Bio.Seq.Seq` (from Biopython)
     """
 
-    def __init__(self, seq, protein_pos=None, mhc: str = None, species: str = None, epitope_id: str = None):
+    def __init__(self, peptide, alleles=None, organism=None):
         """
-        :param str seq: Sequence of the peptide in one letter amino acid code
-        :param protein_pos: Dict of transcript_IDs to position of origin in protein
-        :type protein_pos: dict(:class:`~epytope.Core.Protein.Protein`,list(int))`
-        :param str mhc: major histo compatibility complex to which this chain binds
-        :param str species: a string representing the species of the epitope
-        :param str epitope_id: a string representing the epitope ID
+        :param peptide: peptide presenting the amino acid sequence
+        :type peptide: :class:`~epytope.Core.Peptide.Peptide`
+        :param alleles: Major Histocompatibility Complexes (MHCs) which bound the peptide
+        :type alleles: list(:class:`~epytope.Core.Allele.Allele`)
+        :param str organism: origin of the peptide sequence
         """
-        if self.invalid(seq):
-            raise ValueError(f"{seq} is an invalid protein sequence")
-        super().__init__(seq, protein_pos)
-        self.mhc = mhc
-        self.species = species
-        self.epitope_id = epitope_id
+        MetadataLogger.__init__(self)
+        self.peptide = peptide
+        self.alleles = alleles
+        self.organism = organism
 
-    def invalid(self, seq: str) -> bool:
-        """
-        checks if the passed sequence is an invalid protein sequence
-        :param str seq: a String representing the protein sequence
-        :return: Returns true if the passed sequence is not a protein sequence
-        :rtype: bool
-        """
-        aas = set("ARNDCEQGHILKMFPSTWYV")
-        if seq:
-            return any([aa not in aas for aa in seq])
-        return True
+    def __repr__(self):
+        lines = [f"EPITOPE:\n {self.peptide}"]
+        if self.alleles is not None:
+            for allele in self.alleles:
+                lines.append(f"bound by ALLELE: {allele}")
+        return '\n'.join(lines)
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def __hash__(self):
+        return hash(str(self))
