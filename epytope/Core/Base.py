@@ -445,7 +445,7 @@ class ATCRSimilarityMeasurement(object, metaclass=APluginRegister):
                                       path2: str = None):
         """
         computes distance metric between all TCR seqs in the passed dataframe or a path to it
-        :param str path1: a string representing a path to the first dataset(csv file), which will be precessed. Default
+         :param str path1: a string representing a path to the first dataset(csv file), which will be precessed. Default
         value is None, when the dataframe object is given
         :param `pd.DataFrame` df1: first dataset(`pd.DataFrame). Default value is None, if the path1 is given
         :param str path2: a string representing a path to the second dataset(csv file), which will be precessed. Default
@@ -517,19 +517,20 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def predict(self, peptides, TCRs, repository: str, all: bool, trained_on: str = None):
+    def predict(self, peptides, TCRs, repository: str, all: bool, dataset: str = None, trained_on: str = None):
         """
         Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide
         If alleles is not given, predictions for all valid alleles of the predictor is performed. If, however,
         a list of alleles is given, predictions for the valid allele subset is performed.
         :param peptides: The peptide objects for which predictions should be performed
-        :type peptides: :class:`~epytope.Core.TCREpitop.TCREpitop` or list(:class:`~epytope.Core.TCREpitop.TCREpitop`)
+        :type peptides: :class:`~epytope.Core.Peptide.Peptide` or list(:class:`~epytope.Core.Peptide.Peptide`)
         :param TCRs: T cell receptor objects
         :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
         list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
         :param str repository: a path to a local github repository of the desired predictor
         :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
         the prediction will be preformed in the same order of the passed peptides and TCRs objects
+        :param str dataset: specifying the dataset the model trained on
         :param str trained_on: specifying the dataset the model trained on
         :return: Returns a :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`
         :rtype: :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`

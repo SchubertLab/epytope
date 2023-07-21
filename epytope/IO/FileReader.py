@@ -357,12 +357,12 @@ def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str =
         :return: returns the processed dataframe
         :rtype: `pd.DataFrame`
         """
-        #if "MHC" in df.columns:
-            #df.loc[:, "MHC"] = df["MHC"].apply(lambda x: re.search(r".*?(?=:)|.*", str(x)).group())
-        df.loc[:, "TRA"] = df.loc[:, "TRA"].str.upper()
-        df.loc[:, "TRB"] = df.loc[:, "TRB"].str.upper()
+        if "MHC" in df.columns:
+            df.loc[:, "MHC"] = df["MHC"].apply(lambda x: re.search(r".*?(?=:)|.*", str(x)).group())
+        df["TRA"] = df["TRA"].str.upper()
+        df["TRB"] = df["TRB"].str.upper()
         if source != "scirpy" and "Peptide" in df.columns:
-            df.loc[:, "Peptide"] = df.loc[:, "Peptide"].str.upper()
+            df["Peptide"] = df["Peptide"].str.upper()
             df = df[df["Peptide"].apply(lambda x: not invalid(str(x)))]
         # keep only rows, where cdr3 beta sequences consist only of amino acid characters
         df = df[df["TRB"].apply(lambda x: not invalid(str(x)))]

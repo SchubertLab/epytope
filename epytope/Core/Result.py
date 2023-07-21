@@ -393,7 +393,7 @@ class TAPPredictionResult(AResult):
 class TCRSpecificityPredictionResult(AResult):
     """
         A :class:`~epytope.Core.Result.TCRSpecificityPredictionResult` object is a :class:`pandas.DataFrame` with
-        single-indexing, where column Ids are the prediction scores of the different prediction methods, and row Ids
+        single-indexing, where column  Ids are the prediction scores fo the different prediction methods, and row Ids
         are the alpha and beta chains of an AntigenImmuneReceptor object and class:`~epytope.Core.TCREpitope.TCREpitope`
         object.
         TCRSpecificityPredictionResult:
@@ -448,20 +448,18 @@ class TCRSpecificityPredictionResult(AResult):
 class TCRSimilarityMeasurementResult(AResult):
     """
         A :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult` object is a :class:`pandas.DataFrame` with
-        single-indexing, where column Ids are the similarity scores of the different similarity methods, and row Ids
+        single-indexing, where column  Ids are the prediction scores fo the different prediction methods, and row Ids
         are the Receptor_ID , alpha and beta chains of the first and second AntigenImmuneReceptor object respectively.
         TCRSimilarityMeasurementResult:
-        +---------------+---------------+--------------+----------------+--------------+-------------+--------------------------------------+
-        | Method                                                                                     |    Method Name                       |
-        +- - - - - - - -+- - - - - - - -+- - - - - - -+ - - - - - - - - +- - - - - - - + - - - - - - +- - - - -+- - - - - +- - - - +- - - - +
-        | Chain                                                                                      |  cdr3_a |  cdr3_b | alpha  |  beta   |
-        +- - - - - - - -+- - - - - - - -+- - - - - - -+ - - - - - - - - +- - - - - - - + - - - - - - +- - - - -+- - - - - +- - - - +- - - - +
-        |(Rep1,recep_id)|(Rep2,recep_id)|(Rep1,cdr3_a)| (Rep1,cdr3_b)  | (Rep2,cdr3_a)| (Rep2,cdr3_b)|                                      |
-        +===============+==============+==============+================+==============+==============+=========+=========+========+========+
-        |        0      |     TRA1     |     TRB1     |        0       |    TRA2      |     TRB2     |    53   |    35   |   65   |   75   |
-        +--------------+---------------+--------------+----------------+--------------+--------------+---------+---------+--------+--------+
-        |              |               |              |        1       |    TRA2      |     TRB2     |    53   |    35   |   65   |   75   |
-        +--------------+---------------+--------------+----------------+--------------+--------------+---------+---------+--------+--------+
+        +-----------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+-------------------+
+        |                                                                                                                   Method Name                                                                                  |
+        +=================+==================+==================+==================+==================+==================+==================+==================+==================+==================+===================+
+        | (Rep1,recep_id) | (Rep1,cdr3_a_aa) |  (Rep1,cdr3_b_aa) | (Rep2, recep_id) | (Rep2,cdr3_a_aa) | (Rep2,cdr3_b_aa) |     cdr3_a_aa    |     cdr3_b_aa    |     alpha        |       beta       |       tcrdist    |
+        +=================+==================+==================+==================+==================+==================+==================+==================+==================+==================+===================+
+        |         0       |      TRA1        |        TRB1      |        0         |       TRA1       |       TRB1       |         53       |         35       |         65       |        75        |        100        |
+        +-----------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+        |                 |                  |                  |        1         |       TRA2       |       TRB2       |         34       |         25       |        75        |        85        |        110       |
+        +-----------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
     """
 
     def filter_result(self, expressions, seq_type):
@@ -476,6 +474,7 @@ class TCRSimilarityMeasurementResult(AResult):
         """
         if isinstance(expressions, tuple):
             expressions = [expressions]
+
         df = deepcopy(self)
         methods = list(set(df.columns.get_level_values(0)))
         seq_types = list(set(df.columns.get_level_values(1)))
@@ -488,6 +487,8 @@ class TCRSimilarityMeasurementResult(AResult):
                 raise ValueError(f"Specified method {method} does not match methods of data frame {methods}.")
             else:
                 filt = comp(df.xs(method, axis=1).xs(seq_type, axis=1), thr).values
+                # Only keep rows which contain values fulfilling the comparators logic in the specified method
+                #keep_row = [bool.any() for bool in filt]
                 df = df.loc[filt]
 
         return TCRSimilarityMeasurementResult(df)
@@ -510,14 +511,14 @@ class TCRSimilarityMeasurementResult(AResult):
         """
         Create :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult` object from dictionary holding distances for
          cdr3 alpha, cdr3 beta, alpha, beta or alpha and beta combined.
-        :param d: dictionary with the following structure: {sequence type: distances `numpy.ndarray`}
+
+        :param d: dict with following structure: {sequence type: distances `numpy.ndarray`}
         :param pandas.DataFrame idx: a dataframe with the following header:
-        [("Rep1", "recep_id"), ("Rep2", "recep_id"), ("Rep1", "cdr3_a"), ("Rep1", "cdr3_b"), ("Rep2", "cdr3_a"),
+        [("Rep1", "recep_id"), ("Rep1", "cdr3_a"), ("Rep1", "cdr3_b"), ("Rep2", "recep_id"), ("Rep2", "cdr3_a"),
         ("Rep2", "cdr3_b")] representing the one tcr from each two repertoires  and the corresponding sequences as rows.
         :param method: str specifying the tool used to measure the similarity
-        :param filt: boolean value to filter all pairwise computed similarity for one seq compared with itself and avoid
-        displaying the similarity score for two seqs more than one time in one repertoire. Default value is False. In
-        this case no pairs will be eliminated by computing the scores for two repertoires.
+        :param filt: boolean list to avoid displaying the distance for sequences compared with themselves. This filter
+        will be used only by applying the method on one repertoire.
         :return: A new :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult` object
         :rtype: :class:`~epytope.Core.Result.TCRSimilarityMeasurementResult`
         """
@@ -550,4 +551,6 @@ class TCRSimilarityMeasurementResult(AResult):
                 else:
                     for i, index in enumerate(tuples):
                         df.loc[index, (method, seq)] = scores[i]
+
+
         return TCRSimilarityMeasurementResult(df)
