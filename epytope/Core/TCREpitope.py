@@ -18,29 +18,30 @@ class TCREpitope(MetadataLogger):
     .. note:: For accessing and manipulating the sequence see also :mod:`Bio.Seq.Seq` (from Biopython)
     """
 
-    def __init__(self, peptide, alleles=None, organism=None):
+    def __init__(self, peptide, allele=None, organism=None):
         """
         :param peptide: peptide presenting the amino acid sequence
         :type peptide: :class:`~epytope.Core.Peptide.Peptide`
-        :param alleles: Major Histocompatibility Complexes (MHCs) which bound the peptide
-        :type alleles: list(:class:`~epytope.Core.Allele.Allele`)
+        :param allele: Major Histocompatibility Complex (MHCs) which bound the peptide
+        :type allele: :class:`~epytope.Core.Allele.Allele`
         :param str organism: origin of the peptide sequence
         """
         MetadataLogger.__init__(self)
         self.peptide = peptide
-        self.alleles = alleles if isinstance(alleles, list) else [alleles]
+        self.allele = allele if allele != "" else None
         self.organism = organism
 
     def __repr__(self):
         lines = [f"TCR EPITOPE:\n PEPTIDE {self.peptide}"]
-        if self.alleles is not None:
-            line = " bound by ALLELE: "
-            for i, allele in enumerate(self.alleles):
-                if i != 0:
-                    line += ", "
-                line += f"{allele}"
+        if self.allele is not None:
+            line = f" bound by ALLELE: {self.allele}"
             lines.append(line)
-        return '\n'.join(lines)
+        return "\n".join(lines)
+
+    def __str__(self):
+        if self.allele is None:
+            return self.peptide
+        return f"{self.peptide}, {self.allele}"
 
     def __eq__(self, other):
         return str(self) == str(other)

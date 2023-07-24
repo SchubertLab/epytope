@@ -2,7 +2,7 @@ __author__ = 'albahah'
 
 
 from epytope.Core.Base import ATCRSpecificityPrediction
-# from epytope.TCRSpecificityPrediction.External import *
+from epytope.TCRSpecificityPrediction.External import *
 
 try:
     from fred_plugin import *
@@ -36,7 +36,6 @@ class MetaclassTCRSpecificity(type):
 
 
 class TCRSpecificityPredictorFactory(metaclass=MetaclassTCRSpecificity):
-
     @staticmethod
     def available_methods():
         """

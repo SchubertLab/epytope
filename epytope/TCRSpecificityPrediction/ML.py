@@ -232,7 +232,7 @@ class Ergo2(AExternalTCRSpecificityPrediction, AExternal):
         result = self.parse_external_result(tmp_out.name, df)
         tmp_out.close()
         os.remove(tmp_out.name)
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
+        df_result = TCRSpecificityPredictionResult.from_dict(result,,
         df_result.index = pd.MultiIndex.from_tuples([tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
                                                         names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
         return df_result
@@ -555,7 +555,7 @@ class TITAN(AExternalTCRSpecificityPrediction, AExternal):
             print(f"TITAN's trained model can not make predictions for those samples, which their v- or "
                   f"j-regions are not included in the human v- or j-regions given by IMGT. Therefore the prediction "
                   f"score for these samples will be -1.")
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
+        df_result = TCRSpecificityPredictionResult.from_dict(result,,
         df_result.index = pd.MultiIndex.from_tuples([tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
                                                         names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
         return df_result
@@ -778,7 +778,7 @@ class ImRex(AExternalTCRSpecificityPrediction, AExternal):
         result = self.parse_external_result(file=tmp_out.name, df=df)
         tmp_out.close()
         os.remove(tmp_out.name)
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
+        df_result = TCRSpecificityPredictionResult.from_dict(result,,
         df_result.index = pd.MultiIndex.from_tuples(
             [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
             names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
@@ -1032,7 +1032,7 @@ class NetTCR(AExternalTCRSpecificityPrediction, AExternal):
         result = self.parse_external_result(file=tmp_out.name, df=df)
         tmp_out.close()
         os.remove(tmp_out.name)
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
+        df_result = TCRSpecificityPredictionResult.from_dict(result,,
         df_result.index = pd.MultiIndex.from_tuples(
             [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
             names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
@@ -1269,7 +1269,7 @@ class pMTnet(AExternalTCRSpecificityPrediction, AExternal):
         os.remove(tmp_file.name)
         result = self.parse_external_result(file=output, df=df, output_log=output_log)
         tmp_dir.cleanup()
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
+        df_result = TCRSpecificityPredictionResult.from_dict(result,,
         df_result.index = pd.MultiIndex.from_tuples(
             [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
             names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
@@ -1517,7 +1517,7 @@ class ATM_TCR(AExternalTCRSpecificityPrediction, AExternal):
         os.remove(tmp_file.name)
         result = self.parse_external_result(file=output, df=df, chain=chain)
         os.remove(output)
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
+        df_result = TCRSpecificityPredictionResult.from_dict(result,,
         df_result.index = pd.MultiIndex.from_tuples(
             [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
             names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
