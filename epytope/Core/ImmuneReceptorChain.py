@@ -18,16 +18,14 @@ class ImmuneReceptorChain(MetadataLogger):
         :class:`~epytope.Core.ImmuneReceptorChain.ImmuneReceptorChain` corresponding to exactly one polypeptide chain of
             a B respectively T cell receptor
     """
-    def __init__(self, chain_type, cdr3, v_gene=None, d_gene=None, j_gene=None, cdr1=None, cdr2=None):
+    def __init__(self, chain_type, cdr3, v_gene=None, d_gene=None, j_gene=None):
         """
         :param str chain_type: String representing the type of the polypeptide chain,
             ["TRA", "TRB", "TRG", "TRD", "IGK", "IGH", "IGL"]
         :param str v_gene: variable gene in the nomenclature 'TRBV4-1'
         :param str d_gene: diversity gene in the nomenclature 'TRBD1'
         :param str j_gene: joining gene in the nomenclature 'TRBJ1-1'
-        :param str cdr1: Complementary Determining Region (CDR1) protein sequence in IUPACProtein alphabet
-        :param str cdr2: CDR2 protein sequence in IUPACProtein alphabet
-        :param str cdr3: CDR3 protein sequence in IUPACProtein alphabet
+        :param str cdr3: Complementary Determining Region (CDR3) protein sequence in IUPACProtein alphabet
         """
         # Init parent type:
         MetadataLogger.__init__(self)
@@ -35,16 +33,12 @@ class ImmuneReceptorChain(MetadataLogger):
         self.v_gene = v_gene
         self.d_gene = d_gene
         self.j_gene = j_gene
-        self.cdr1 = None if cdr1 is None else Seq(cdr1.upper())
-        self.cdr2 = None if cdr2 is None else Seq(cdr2.upper())
         self.cdr3 = Seq(cdr3.upper())
 
     def __repr__(self):
         lines = [f"IMMUNE RECEPTOR CHAIN: {self.chain_type}"]
 
         receptor_information = {
-            "CDR1": self.cdr1,
-            "CDR2": self.cdr2,
             "CDR3": self.cdr3,
             "V_gene": self.v_gene,
             "D_gene": self.d_gene,
