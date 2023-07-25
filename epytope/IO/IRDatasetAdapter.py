@@ -34,7 +34,8 @@ class IRDataset(metaclass=ABCMeta):
                        prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
                        suffix_chain_type="chain_type", suffix_cdr3="cdr3",
                        suffix_v_gene="v_gene", suffix_d_gene="d_gene", suffix_j_gene="j_gene"):
-        df_irs = df_irs[df_irs[f"{prefix_vj_chain}{suffix_cdr3}"].isna() | df_irs[f"{prefix_vdj_chain}{suffix_cdr3}"]]
+        df_irs = df_irs[~df_irs[f"{prefix_vj_chain}{suffix_cdr3}"].isna() |
+                        ~df_irs[f"{prefix_vdj_chain}{suffix_cdr3}"].isna()]
         repertoire = []
         for i, row in df_irs.iterrows():
             organism = row[column_organism]
@@ -347,7 +348,7 @@ class ScirpyAdapter(ATCRDatasetAdapter, IRDataset):
             if col in kwargs:
                 rename_dict[col] = kwargs[col]
             else:
-                df_irs[col] = ""
+                df_irs[col.split("_")[1]] = ""
 
         # Assign celltype if not provided by chain annotation
         if "column_celltype" not in kwargs:
@@ -359,7 +360,7 @@ class ScirpyAdapter(ATCRDatasetAdapter, IRDataset):
                 return ""
             df_irs["celltype"] = df_irs.apply(get_celltype, axis=1)
 
-        required_columns = ["column_celltype", "column_organism"]
+        required_columns = ["celltype", "organism"]
         for chain in ["IR_VJ_1_", "IR_VDJ_1_"]:
             for entry in ["locus", "junction_aa", "v_call", "d_call", "j_call"]:
                 required_columns.append(f"{chain}{entry}")
@@ -386,35 +387,22 @@ class ScirpyAdapter(ATCRDatasetAdapter, IRDataset):
         return self.__version
 
 
-'''
-class AIRRAdapter(IRDataset):
+class AIRRAdapter(ScirpyAdapter, IRDataset):
+    __name = "airr"
+    __version = "scirpy:0.10.1"
+
     def __init__(self):
         super().__init__()
 
+    @property
+    def name(self):
+        return self.__name
 
+    @property
+    def version(self):
+        return self.__version
 
-def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str = None, score: int = 1) \
-        -> pd.DataFrame:
-
-    def substring(column):
-        """
-        helper function to get gene allele annotation from family name of v,j regions
-        :param column: pd.Series, where entries are the family name of v,j regions
-        """
-        return column.apply(lambda x: re.search(r"^\w*(-\d+)*", str(x)).group() if x != "" else x)
-
-
-    def process(df: pd.DataFrame, source: str = None) -> pd.DataFrame:
-        """
-        helper function to check for invalid protein sequences in upper case.
-        All rows with invalid cdr3 beta seqs will be removed, whereas invalid cdr3 alpha seqs will be replaced with an
-        empty string
-        :param df: a dataframe, which will be processed
-        :param str source: the source of the dataset [vdjdb, McPAS, scirpy, IEDB].
-        :return: returns the processed dataframe
-        :rtype: `pd.DataFrame`
-        """
-        df.loc[:, "MHC"] = df["MHC"].apply(lambda x: re.search(r".*?(?=:)|.*", str(x)).group())
-        df["TRA"] = df["TRA"].str.upper()
-        df["TRB"] = df["TRB"].str.upper()
-'''
+    def from_path(self, path, **kwargs):
+        import scirpy as ir
+        adata = ir.io.read_airr(path)
+        self.from_object(adata, **kwargs)
