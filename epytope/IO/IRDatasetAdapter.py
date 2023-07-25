@@ -171,11 +171,75 @@ class VDJdbAdapter(IRDataset):
             # get only gene allele annotation form family name of v, j regions respectively
             df[["TRAV", "TRAJ", "TRBV", "TRBJ"]] = df[["TRAV", "TRAJ", "TRBV", "TRBJ"]].apply(substring)
             return process(df)
+"""
 
 
 class IEDBAdapter(IRDataset):
+    __name = "iedb"
+    __version = "1.0.0"
+
     def __init__(self):
+        """
+        Extract TCR information from the IEDB Recetpor-Eptiope database-Format:
+        https://www.iedb.org/
+        Please download the database or related subset.
+        """
         super().__init__()
+        self.epitopes = None
+
+    def from_path(self, path_csv, **kwargs):
+        df_irs = pd.read_csv(path_csv, encoding='cp1252', low_memory=False)
+        df_irs = df_irs.rename(columns={"CDR3.alpha.aa": "TRACDR3", "CDR3.beta.aa": "TRBCDR3"})
+        rename_dict = {
+            "prefix_vj_chain": "TRA",
+            "prefix_vdj_chain": "TRB",
+            "suffix_cdr3": "CDR3",
+            "suffix_v_gene": "V",
+            "suffix_d_gene": "D",
+            "suffix_j_gene": "J",
+            "column_celltype": "T.Cell.Type",
+            "column_organism": "Species",
+        }
+
+        keep_cols = ["T.Cell.Type", "Species", "TRBCDR3", "TRBV", "TRBD", "TRBJ",  "TRACDR3", "TRAV", "TRAJ",
+                     "Epitope.peptide", "MHC"]
+        df_irs = df_irs[keep_cols]
+        df_irs = df_irs.fillna("")
+
+        for col in ["TRACDR3", "TRBCDR3", "Epitope.peptide"]:
+            df_irs = df_irs[df_irs[col].str.match("^[ACDEFGHIKLMNPQRSTVWY]*$")]
+
+        df_irs.drop_duplicates(keep='first', inplace=True)
+        df_irs = df_irs[(df_irs["TRACDR3"] != "") | (df_irs["TRBCDR3"] != "")]
+        df_irs = df_irs[df_irs["TRACDR3"].isna() | df_irs["TRBCDR3"]]
+
+        df_irs["TRAchain_type"] = "TRA"
+        df_irs["TRBchain_type"] = "TRB"
+        df_irs["T.Cell.Type"] = df_irs["T.Cell.Type"] + "T cell"
+
+        df_irs[["TRAcdr1", "TRAcdr2", "TRBcdr1", "TRBcdr2"]] = ""
+
+        self.save_eptiopes(df_irs)
+        self.from_dataframe(df_irs, **rename_dict)
+
+    def save_eptiopes(self, df_epitopes):
+        epitopes = []
+        for i, row in df_epitopes[["Epitope.peptide", "MHC"]].iterrows():
+            if re.match(r"^[ACDEFGHIKLMNPQRSTVWY]*$", row["Epitope.peptide"]):
+                new_epitope = TCREpitope(peptide=Peptide(row["Epitope.peptide"]),
+                                         alleles=row["MHC"] if row["MHC"] != "" else None)
+            else:
+                new_epitope = None
+            epitopes.append(new_epitope)
+        self.epitopes = epitopes
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
 
     def from_path(self, path_csv, **kwargs):
         df_irs = pd.read_csv(path_csv, sep=",", low_memory=False)
@@ -201,7 +265,6 @@ class IEDBAdapter(IRDataset):
         df.fillna("", inplace=True)
         df.drop_duplicates(subset=["TRA", "TRB", "Peptide"], keep='first', inplace=True)
         df = df[df["TRB"] != ""]
-"""
 
 
 class McPasAdapter(ATCRDatasetAdapter, IRDataset):
