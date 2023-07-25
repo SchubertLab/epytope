@@ -32,7 +32,7 @@ class IRDataset(metaclass=ABCMeta):
 
     def from_dataframe(self, df_irs, column_celltype="celltype", column_organism="organism",
                        prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
-                       suffix_chain_type="chain_type", suffix_cdr1="cdr1", suffix_cdr2="cdr2", suffix_cdr3="cdr3",
+                       suffix_chain_type="chain_type", suffix_cdr3="cdr3",
                        suffix_v_gene="v_gene", suffix_d_gene="d_gene", suffix_j_gene="j_gene"):
         df_irs = df_irs[df_irs[f"{prefix_vj_chain}{suffix_cdr3}"].isna() | df_irs[f"{prefix_vdj_chain}{suffix_cdr3}"]]
         repertoire = []
@@ -47,8 +47,6 @@ class IRDataset(metaclass=ABCMeta):
                     v_gene=row[f"{prefix_chain}{suffix_v_gene}"],
                     d_gene=row[f"{prefix_chain}{suffix_d_gene}"] if f"{prefix_chain}{suffix_d_gene}" in row else None,
                     j_gene=row[f"{prefix_chain}{suffix_j_gene}"],
-                    cdr1=row[f"{prefix_chain}{suffix_cdr1}"],
-                    cdr2=row[f"{prefix_chain}{suffix_cdr2}"],
                 )
                 chains.append(new_chain)
             new_ir = ImmuneReceptor(
@@ -86,7 +84,7 @@ class IRDataset(metaclass=ABCMeta):
             content["organism"].append(ir.organism if ir.organism else "")
 
             for chain_type in ["VDJ", "VJ"]:
-                for attribute in ["chain_type", "cdr1", "cdr2", "cdr3", "v_gene", "d_gene", "j_gene"]:
+                for attribute in ["chain_type", "cdr3", "v_gene", "d_gene", "j_gene"]:
                     if chain_type == "VJ" and attribute == "d_gene":
                         continue
                     column = f"{chain_type}_{attribute}"
@@ -250,8 +248,6 @@ class IEDBAdapter(IRDataset):
             "prefix_vj_chain": "Calculated Chain 1", # check whether VJ and VDJ right todo
             "prefix_vdj_chain":  "Calculated Chain 2",
             "suffix_chain_type": 'chain_type',
-            "suffix_cdr1": None, # todo
-            "suffix_cdr2": None,   # todo
             "suffix_cdr3": "CDR3",
             "suffix_v_gene": "V Gene",
             "suffic_d_gene": None,  # todo
@@ -309,8 +305,6 @@ class McPasAdapter(ATCRDatasetAdapter, IRDataset):
         df_irs["TRBchain_type"] = "TRB"
         df_irs["T.Cell.Type"] = df_irs["T.Cell.Type"] + "T cell"
 
-        df_irs[["TRAcdr1", "TRAcdr2", "TRBcdr1", "TRBcdr2"]] = ""
-
         self.save_eptiopes(df_irs)
         self.from_dataframe(df_irs, **rename_dict)
 
@@ -319,7 +313,7 @@ class McPasAdapter(ATCRDatasetAdapter, IRDataset):
         for i, row in df_epitopes[["Epitope.peptide", "MHC"]].iterrows():
             if re.match(r"^[ACDEFGHIKLMNPQRSTVWY]*$", row["Epitope.peptide"]):
                 new_epitope = TCREpitope(peptide=Peptide(row["Epitope.peptide"]),
-                                         alleles=row["MHC"] if row["MHC"] != "" else None)
+                                         allele=row["MHC"] if row["MHC"] != "" else None)
             else:
                 new_epitope = None
             epitopes.append(new_epitope)
@@ -361,15 +355,13 @@ class ScirpyAdapter(ATCRDatasetAdapter, IRDataset):
             "suffix_d_gene": "d_call",
             "suffix_j_gene": "j_call"
         }
-        missing_columns = ["IR_VJ_1_cdr1", "IR_VJ_1_cdr2", "IR_VDJ_1_cdr1", "IR_VDJ_1_cdr2"]
+
+        df_irs = data.obs
         for col in ["column_celltype", "column_organism"]:
             if col in kwargs:
                 rename_dict[col] = kwargs[col]
             else:
-                missing_columns.append(col.split('_')[1])
-
-        df_irs = data.obs
-        df_irs[missing_columns] = ""
+                df_irs[col] = ""
 
         # Assign celltype if not provided by chain annotation
         if "column_celltype" not in kwargs:
@@ -381,11 +373,11 @@ class ScirpyAdapter(ATCRDatasetAdapter, IRDataset):
                 return ""
             df_irs["celltype"] = df_irs.apply(get_celltype, axis=1)
 
-        required_columns = []
+        required_columns = ["column_celltype", "column_organism"]
         for chain in ["IR_VJ_1_", "IR_VDJ_1_"]:
             for entry in ["locus", "junction_aa", "v_call", "d_call", "j_call"]:
                 required_columns.append(f"{chain}{entry}")
-        df_irs = df_irs[required_columns + missing_columns].copy()
+        df_irs = df_irs[required_columns].copy()
 
         df_irs.drop_duplicates(inplace=True)
         df_irs.reset_index(drop=True, inplace=True)

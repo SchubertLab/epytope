@@ -414,27 +414,24 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
 
     @property
     @abc.abstractmethod
-    def version(cls):
+    def version(self):
         """
         The version of the predictor
         """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def predict(self, tcrs, epitopes, pairwise=True, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+    def predict(self, tcrs, epitopes, pairwise=True, **kwargs):
         """
         Predicts binding score between a T-cell receptor and an epitope.
         :param tcrs: the T cell receptors containing the sequence and gene information
         :type tcrs: :class:`~epytope.Core.ImmuneReceptor.TCellreceptor`
-        or list(:class:`~epytope.Core.Peptide.Peptide`) or :class:`~epytope.IO.IRDatasetAdapter.IRDataset`
+        or list(:class:`~epytope.Core.ImmuneReceptor.TCellreceptor`) or :class:`~epytope.IO.IRDatasetAdapter.IRDataset`
         :param epitopes: epitope sequences
         :type  epitopes: str or :class:'~epytope.Core.TCREpitope.TCREpitope' or
         list(:class:'~epytope.Core.TCREpitope.TCREpitope')
         :param bool pairwise: predict binding between all tcr-epitope pairs.
         Otherwise, tcrs[i] will be tested against epitopes[i] (requires len(tcrs)==len(epitopes))
-        :param str interpreter: path to the python interpreter, where the predictor is installed
-        :param str conda: conda environment of the predictor
-        :param str cmd_prefix: Prefix for the command line input before the predictor is executed, which can be used
         to activate the environments (e.g. venv, poetry, ...) where the predictor is installed
         :param kwargs: attributes that will be passed to the predictor without a check
         :return: TODO
@@ -443,6 +440,66 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         :rtype: :class:`~epytope.Core.Result.AResult`
         """
         raise NotImplementedError
+
+    def combine_tcrs_epitopes_pairwise(self, df_tcrs, epitopes):
+        """
+        Replicates the dataframe so that each column is a unique TCR-epitope combination.
+        :param pd.DataFrame df_tcrs: TCR information
+        :param epitopes: epitopes against which to test the TCRS
+        :type epitopes: list(:class:`epytope.Core.TCREpitope.TCREpitope`)
+        :return: dataframe of len(df_tcrs)*len(epitopes)
+        :rtype: pd.DataFrame
+        """
+        import pandas as pd
+        n_tcrs = len(df_tcrs)
+        df_tcrs = pd.concat([df_tcrs] * len(epitopes))
+        peptides = [[epitope.peptide]*n_tcrs for epitope in epitopes]
+        mhcs = [[epitope.allele if epitope.allele is not None else ""]*n_tcrs for epitope in epitopes]
+        df_tcrs["Epitope"] = [item for sublist in peptides for item in sublist]
+        df_tcrs["MHC"] = [item for sublist in mhcs for item in sublist]
+        return df_tcrs
+
+    def combine_tcrs_epitopes_list(self, df_tcrs, epitopes):
+        """
+        Stores the epitopes in the correct collumn of the TCR information.
+        :param pd.DataFrame df_tcrs: TCR information
+        :param epitopes: epitopes against which to test the TCRS
+        :type epitopes: list(:class:`epytope.Core.TCREpitope.TCREpitope`)
+        :return: dataframe of len(df_tcrs))
+        :rtype: pd.DataFrame
+        """
+        peptides = [epitope.peptide for epitope in epitopes]
+        mhcs = [epitope.allele for epitope in epitopes]
+        df_tcrs["Epitope"] = peptides
+        df_tcrs["MHC"] = mhcs
+        return df_tcrs
+
+    def input_check(self, tcrs, epitopes, pairwise):
+        """
+        Checks whether TCR and Epitope information is provided in the right format.
+        :param tcrs: the T cell receptors containing the sequence and gene information
+        :type tcrs: :class:`~epytope.Core.ImmuneReceptor.TCellreceptor`
+        :param epitopes: epitope sequences
+        :type  epitopes: list(:class:`~epytope.Core.TCREpitope.TCREpitope`)
+        :param bool pairwise: predict binding between all tcr-epitope pairs.
+        :return: throws warning if the input data is incorrect.
+        """
+        from epytope.Core.ImmuneReceptor import TCellReceptor
+        from epytope.Core.TCREpitope import TCREpitope
+
+        for tcr in tcrs.receptors:
+            if not isinstance(tcr, TCellReceptor):
+                raise ValueError(f"{tcr} is not of type TCRReceptor")
+        for epitope in epitopes:
+            if not isinstance(epitope, TCREpitope):
+                raise ValueError(f"{epitope} is not of type TCREpitope")
+
+        if not pairwise:
+            if len(tcrs.receptors) != len(epitopes):
+                raise ValueError(f"len(tcrs) ({len(tcrs.receptors)}) must equal len(epitopes) ({len(epitopes)}) "
+                                 f"when pairwise==False")
+
+
 
 
 class ATCRDatasetAdapter(object, metaclass=APluginRegister):
