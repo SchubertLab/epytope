@@ -172,7 +172,7 @@ class VDJdbAdapter(IRDataset):
 """
 
 
-class IEDBAdapter(IRDataset):
+class IEDBAdapter(ATCRDatasetAdapter, IRDataset):
     __name = "iedb"
     __version = "1.0.0"
 
@@ -186,46 +186,55 @@ class IEDBAdapter(IRDataset):
         self.epitopes = None
 
     def from_path(self, path_csv, **kwargs):
-        df_irs = pd.read_csv(path_csv, encoding='cp1252', low_memory=False)
-        df_irs = df_irs.rename(columns={"CDR3.alpha.aa": "TRACDR3", "CDR3.beta.aa": "TRBCDR3"})
-        rename_dict = {
-            "prefix_vj_chain": "TRA",
-            "prefix_vdj_chain": "TRB",
-            "suffix_cdr3": "CDR3",
-            "suffix_v_gene": "V",
-            "suffix_d_gene": "D",
-            "suffix_j_gene": "J",
-            "column_celltype": "T.Cell.Type",
-            "column_organism": "Species",
-        }
+        df_irs = pd.read_csv(path_csv, low_memory=False)
+        df_irs["Chain 1 Type"] = df_irs["Chain 1 Type"].replace({"alpha": "TRA", "gamma": "TRG"})
+        df_irs["Chain 2 Type"] = df_irs["Chain 2 Type"].replace({"beta": "TRB", "delta": "TRD"})
+        df_irs = df_irs.rename(columns={"Chain 1 Type": "Calculated Chain 1 Type",
+                                        "Chain 2 Type": "Calculated Chain 2 Type",
+                                        "Chain 1 CDR3 Calculated": "Calculated Chain 1 CDR3",
+                                        "Chain 2 CDR3 Calculated": "Calculated Chain 2 CDR3",
+                                        })
 
-        keep_cols = ["T.Cell.Type", "Species", "TRBCDR3", "TRBV", "TRBD", "TRBJ",  "TRACDR3", "TRAV", "TRAJ",
-                     "Epitope.peptide", "MHC"]
+        for col in ["Calculated Chain 1 CDR3", "Calculated Chain 2 CDR3"]:
+            df_irs[col] = df_irs[col].apply(lambda x: x if x == "" else f"C{x}F")
+
+        rename_dict = {
+            "column_celltype": "Response Type",
+            "prefix_vj_chain": "Calculated Chain 1 ",
+            "prefix_vdj_chain":  "Calculated Chain 2 ",
+            "suffix_chain_type": "Type",
+            "suffix_cdr3": "CDR3",
+            "suffix_v_gene": "V Gene",
+            "suffix_d_gene": "D Gene",
+            "suffix_j_gene": "J Gene"
+        }
+        df_irs = df_irs.replace("nan", "")
+        df_irs["organism"] = ""
+
+        keep_cols = ["Response Type", "organism", "Calculated Chain 1 V Gene", "Calculated Chain 1 J Gene",
+                     "Calculated Chain 1 CDR3", "Calculated Chain 1 Type", "Calculated Chain 2 V Gene",
+                     "Calculated Chain 2 D Gene", "Calculated Chain 2 J Gene",
+                     "Calculated Chain 2 CDR3", "Calculated Chain 2 Type", "Description", "MHC Allele Names"]
         df_irs = df_irs[keep_cols]
         df_irs = df_irs.fillna("")
 
-        for col in ["TRACDR3", "TRBCDR3", "Epitope.peptide"]:
+        for col in ["Calculated Chain 1 CDR3", "Calculated Chain 2 CDR3", "Description"]:
             df_irs = df_irs[df_irs[col].str.match("^[ACDEFGHIKLMNPQRSTVWY]*$")]
 
         df_irs.drop_duplicates(keep='first', inplace=True)
-        df_irs = df_irs[(df_irs["TRACDR3"] != "") | (df_irs["TRBCDR3"] != "")]
-        df_irs = df_irs[df_irs["TRACDR3"].isna() | df_irs["TRBCDR3"]]
-
-        df_irs["TRAchain_type"] = "TRA"
-        df_irs["TRBchain_type"] = "TRB"
-        df_irs["T.Cell.Type"] = df_irs["T.Cell.Type"] + "T cell"
-
-        df_irs[["TRAcdr1", "TRAcdr2", "TRBcdr1", "TRBcdr2"]] = ""
+        df_irs = df_irs[(df_irs["Calculated Chain 1 CDR3"] != "") | (df_irs["Calculated Chain 2 CDR3"] != "")]
+        df_irs = df_irs[df_irs["Calculated Chain 1 CDR3"].isna() | df_irs["Calculated Chain 2 CDR3"]]
 
         self.save_eptiopes(df_irs)
         self.from_dataframe(df_irs, **rename_dict)
 
     def save_eptiopes(self, df_epitopes):
         epitopes = []
-        for i, row in df_epitopes[["Epitope.peptide", "MHC"]].iterrows():
-            if re.match(r"^[ACDEFGHIKLMNPQRSTVWY]*$", row["Epitope.peptide"]):
-                new_epitope = TCREpitope(peptide=Peptide(row["Epitope.peptide"]),
-                                         alleles=row["MHC"] if row["MHC"] != "" else None)
+        for i, row in df_epitopes[["Description", "MHC Allele Names"]].iterrows():
+            if row["Description"] != "":
+                new_epitope = TCREpitope(peptide=Peptide(row["Description"]),
+                                         allele=row["MHC Allele Names"].split(",")[0]
+                                         if row["MHC Allele Names"] != "" else None)
             else:
                 new_epitope = None
             epitopes.append(new_epitope)
@@ -238,29 +247,6 @@ class IEDBAdapter(IRDataset):
     @property
     def version(self):
         return self.__version
-
-    def from_path(self, path_csv, **kwargs):
-        df_irs = pd.read_csv(path_csv, sep=",", low_memory=False)
-
-        rename_dict = {
-            "column_celltype": None, # todo
-            "column_organism": "Organism",
-            "prefix_vj_chain": "Calculated Chain 1", # check whether VJ and VDJ right todo
-            "prefix_vdj_chain":  "Calculated Chain 2",
-            "suffix_chain_type": 'chain_type',
-            "suffix_cdr3": "CDR3",
-            "suffix_v_gene": "V Gene",
-            "suffic_d_gene": None,  # todo
-            "suffix_j_gene": "J gene"
-        }
-        self.from_dataframe(df_irs, **rename_dict)
-        df.insert(6, "T-Cell-Type", "")
-        df.insert(9, "Species", "")
-        df[["TRA", "TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]] = \
-            df[["TRA", "TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]].replace("nan", "")
-        df.fillna("", inplace=True)
-        df.drop_duplicates(subset=["TRA", "TRB", "Peptide"], keep='first', inplace=True)
-        df = df[df["TRB"] != ""]
 
 
 class McPasAdapter(ATCRDatasetAdapter, IRDataset):
@@ -311,7 +297,7 @@ class McPasAdapter(ATCRDatasetAdapter, IRDataset):
     def save_eptiopes(self, df_epitopes):
         epitopes = []
         for i, row in df_epitopes[["Epitope.peptide", "MHC"]].iterrows():
-            if re.match(r"^[ACDEFGHIKLMNPQRSTVWY]*$", row["Epitope.peptide"]):
+            if row["Epitope.peptide"] != "":
                 new_epitope = TCREpitope(peptide=Peptide(row["Epitope.peptide"]),
                                          allele=row["MHC"] if row["MHC"] != "" else None)
             else:
