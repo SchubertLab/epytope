@@ -194,17 +194,6 @@ class Ergo2(AExternalTCRSpecificityPrediction):
         df_out = TCRSpecificityPredictionResult.from_output(results_predictor, tcrs, pairwise, self.name)
         return df_out
 
-    def scrubs(self):
-        result["Score"].astype(float)
-        result.insert(0, "Receptor_ID", df["Receptor_ID"])
-        result.fillna("", inplace=True)
-        result["Receptor_ID"].astype(str)
-
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
-        df_result.index = pd.MultiIndex.from_tuples([tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
-                                                        names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
-        raise NotImplementedError
-
     def correct_code(self, path_repo):
         """
         The github repo contains several bugs, which will be corrected here.
@@ -233,3 +222,107 @@ class Ergo2(AExternalTCRSpecificityPrediction):
         # rename folders
         if os.path.isdir(os.path.join(path_repo, "Models", "AE")):
             shutil.move(os.path.join(path_repo, "Models", "AE"), os.path.join(path_repo, "TCR_Autoencoder"))
+
+
+class ImRex(AExternalTCRSpecificityPrediction):
+    """
+    Implements ImRex (Interaction Map Recognition).
+    Paper: https://doi.org/10.1093/bib/bbaa318
+    Repo: https://github.com/pmoris/ImRex
+
+    """
+    __name = "ImRex"
+    __version = ""
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    def prepare_dataset_IMRex(self, df: pd.DataFrame, filename: str = None):
+        """
+        process the dataset in the way to be suitable with ImRex
+        :param df: a dataframe contains at least TRB seqs and corresponding epitopes to predict, if they bind or not
+        :param filename: str representing the name of the file to save the processed dataset
+        :return: (pd.DataFrame, pd.core.series.Series), where the dataframe has all samples, which have cdr3-beta-seqs,
+        that are 10-20 aas long, and epitopes, which are 8-11 aas long. The function returns additionally series, which
+        holds true values for the accepted samples, otherwise false values.
+        :rtype pd.DataFrame, pd.core.series.Series
+        """
+        # accept only cdr3ß-sequences, which are 10-20 aas long and only epitopes, which are 8-11 aas long
+        mask = (df["TRB"].str.len() >= 10) & (df["TRB"].str.len() <= 20) & (df["Peptide"].str.len() >= 8) & (
+                    df["Peptide"].str.len() <= 11)
+        test_set = df.loc[mask, ]
+        # select only the required feature to run IMRex
+        test_set = test_set.loc[:, ["TRB", "Peptide"]]
+        # remove all observation, in which no cdr3 beta seq or peptide seq doesn't occur
+        test_set = test_set.loc[(test_set["TRB"] != "") & (test_set["Peptide"] != ""), ]
+        # change column names according to https://github.com/pmoris/ImRex#predictions-using-the-pre-built-model
+        test_set.columns = ['cdr3', 'antigen.epitope']
+        # remove all entries, where cdr3 beta does not present
+        test_set.dropna(inplace=True)
+        # remove duplicates
+        # test_set = test_set.drop_duplicates(subset=["cdr3", "antigen.epitope"], keep='first').reset_index(drop=True)
+        if filename:
+            test_set.to_csv(filename, sep=";", index=False)
+        return test_set, mask
+
+    def predict_from_dataset(self, repository: str, path: str = None, df: pd.DataFrame = None, source: str = None,
+                             score: int = 1, **kwargs):
+        if path is None and df is None:
+            raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
+        if df is None:
+            if os.path.isfile(path):
+                df = process_dataset_TCR(path=path, source=source, score=score)
+            else:
+                raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
+        else:
+            df = process_dataset_TCR(df=df, source=source, score=score)
+        if not os.path.isdir(repository):
+            raise NotADirectoryError("please pass a path as a string to a local ImRex repository. To clone the "
+                                     "repository type: 'git clone https://github.com/pmoris/ImRex.git' in the terminal")
+        # prepare the test set to be suitable with ImRex
+        tmp_file = NamedTemporaryFile(delete=False)
+        test_set, mask = self.prepare_dataset_IMRex(df=df, filename=tmp_file.name)
+        if "down" in kwargs:
+            down = kwargs["down"]
+        else:
+            down = False
+        if down:
+            model = os.path.join(repository, 'models/pretrained/2020-07-24_19-18-39_trbmhcidown-shuffle-padded-b32-lre4'
+                                             '-reg001/2020-07-24_19-18-39_trbmhcidown-shuffle-padded-b32-lre4-reg001.h5')
+        else:
+            model = os.path.join(repository, 'models/pretrained/2020-07-30_11-30-27_trbmhci-shuffle-padded-b32-lre4-'
+                                             'reg001/2020-07-30_11-30-27_trbmhci-shuffle-padded-b32-lre4-reg001.h5')
+        script = os.path.join(repository, "src/scripts/predict/predict.py")
+        tmp_out = NamedTemporaryFile(delete=False)
+        cmd = f"python {script} --model {model} --input {tmp_file.name} --output {tmp_out.name}"
+        try:
+            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT)
+            stdo, stde = p.communicate()
+            stdr = p.returncode
+            if stdr > 0:
+                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
+            if os.path.getsize(tmp_out.name) == 0:
+                raise RuntimeError(
+                    "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
+                    stdo.decode())
+        except Exception as e:
+            raise RuntimeError(e)
+        os.remove(tmp_file.name)
+        result = self.parse_external_result(file=tmp_out.name, df=df)
+        tmp_out.close()
+        os.remove(tmp_out.name)
+        df_result = TCRSpecificityPredictionResult.from_dict(result)
+        df_result.index = pd.MultiIndex.from_tuples(
+            [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
+            names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
+        if sum(mask) < df.shape[0]:
+            print(f"ImRex's trained model could not make predictions for some samples, which have either "
+                  f"cdr3-beta-seqs, that are not 10-20 aas long or epitopes, that are not 8-11 aas long. These samples "
+                  f"have prediction score of -1")
+        return df_result
