@@ -4,127 +4,62 @@
 """
 .. module:: TCRSpecificityPrediction
    :synopsis: This module contains all classes for external TCR specificity prediction methods.
-.. moduleauthor:: albahah
+.. moduleauthor:: albahah, drost
 """
 
+import abc
 import os
 import shutil
-import tempfile
-import subprocess
 
 import pandas as pd
 
-from epytope.Core.Base import ATCRSpecificityPrediction
+from epytope.TCRSpecificityPrediction.ML import ACmdTCRSpecificityPrediction
 from epytope.Core.Result import TCRSpecificityPredictionResult
-from epytope.Core.ImmuneReceptor import ImmuneReceptor
-from epytope.Core.TCREpitope import TCREpitope
-from epytope.IO.IRDatasetAdapter import IRDataset
 
 
-class AExternalTCRSpecificityPrediction(ATCRSpecificityPrediction):
+class ARepoTCRSpecificityPrediction(ACmdTCRSpecificityPrediction):
+    @property
+    @abc.abstractmethod
+    def repo(self):
+        """
+        Path to the repository.
+        """
+        raise NotImplementedError
+
     """
-        Abstract base class for external TCR specificity prediction methods.
+        Abstract base class for external TCR specificity prediction methods that are not installable.
+        They require the User to clone the git version and then specify a path to this repo.
         Implements predict functionality.
     """
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        if repository is None or repository == "" or not os.path.isdir(repository):
+            raise NotADirectoryError(f"Repository: '{repository}' does not exist."
+                                     f"Please provide a keyword argument repository with the path to the {self.name}.\n"
+                                     f"You can obtain the repo via: "
+                                     f"'git clone {self.repo}'")
+        os.chdir(repository)
 
-    def predict(self, tcrs, epitopes, pairwise=True, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        """
-        Predicts binding score between a T-cell receptor and an epitope.
-        :param tcrs: the T cell receptors containing the sequence and gene information
-        :type tcrs: :class:`~epytope.Core.ImmuneReceptor.TCellreceptor`
-        or list(:class:`~epytope.Core.ImmuneReceptor.TCellreceptor`) or :class:`~epytope.IO.IRDatasetAdapter.IRDataset`
-        :param epitopes: epitope sequences
-        :type  epitopes: str or :class:'~epytope.Core.TCREpitope.TCREpitope' or
-        list(:class:'~epytope.Core.TCREpitope.TCREpitope')
-        :param bool pairwise: predict binding between all tcr-epitope pairs.
-        Otherwise, tcrs[i] will be tested against epitopes[i] (requires len(tcrs)==len(epitopes))
-        :param str interpreter: path to the python interpreter, where the predictor is installed
-        :param str conda: conda environment of the predictor
-        :param str cmd_prefix: Prefix for the command line input before the predictor is executed, which can be used
-        to activate the environments (e.g. venv, poetry, ...) where the predictor is installed
-        :param kwargs: attributes that will be passed to the predictor without a check
-        :return: Returns a :class:`~epytope.Core.Result.TCRSpecificityPredictionResult` object for the specified
-                 :class:`~epytope.Core.ImmuneReceptor.TCRReceptor` and :class:`~epytope.Core.TCREpitope.TCREpitope`
-        :rtype: :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`
-        """
-        if isinstance(epitopes, TCREpitope):
-            epitopes = [epitopes]
-        if isinstance(tcrs, ImmuneReceptor):
-            tcrs = [tcrs]
-        if isinstance(tcrs, list):
-            tcrs = IRDataset(tcrs)
-        if pairwise:
-            epitopes = list(set(epitopes))
-
-        self.input_check(tcrs, epitopes, pairwise)
-        data = self.format_tcr_data(tcrs, epitopes, pairwise)
-        filenames, tmp_folder = self.save_tmp_files(data)
-        self.run_exec_cmd(filenames, interpreter, conda, cmd_prefix, **kwargs)
-        df_results = self.format_results(filenames, tcrs, pairwise)
-        self.clean_up(tmp_folder, filenames)
-        return df_results
-
-    def format_tcr_data(self, tcrs, epitopes, pairwise):
-        raise NotImplementedError
-
-    def save_tmp_files(self, data):
-        raise NotImplementedError
-
-    def run_exec_cmd(self, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        raise NotImplementedError
-
-    def format_results(self, filenames, tcrs, pairwise):
-        raise NotImplementedError
-
-    def clean_up(self, tmp_folder, files=None):
-        """
-        Removes temporary directories and files.
-        :param tmp_folder: path to the folder where temporary data of this predictor is stored
-        :type tmp_folder: :class:`tempfile:TemporaryDirector`
-        :param list(str) files: additional list of files that will be removed
-        """
-        tmp_folder.cleanup()
-        if files is not None:
-            for file in files:
-                if tmp_folder.name not in file:
-                    os.remove(file)
-
-    def get_tmp_folder_path(self):
-        """
-        Create a new folder in tmp for intermediate results.
-        :return: path to the folder
-        """
-        return tempfile.TemporaryDirectory()
-
-    def exec_cmd(self, cmd, tmp_path_out):
-        """
-        Run a command in a subprocess.
-        :param str cmd: shell command
-        :param str tmp_path_out: path to the output file
-        """
-        try:
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
-            stdo, stde = p.communicate()
-            stdr = p.returncode
-            if stdr > 0:
-                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
-            if os.path.getsize(tmp_path_out) == 0:
-                raise RuntimeError(
-                    "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
-                    stdo.decode())
-        except Exception as e:
-            raise RuntimeError(e)
+        interpreter = "python" if interpreter is None else interpreter
+        cmds = []
+        if cmd_prefix is not None:
+            cmds.append(cmd_prefix)
+        if conda is not None:
+            cmds.append(f"conda activate {conda}")
+        cmds.append(f"{interpreter} {repository}/{cmd}")
+        self.exec_cmd(" && ".join(cmds), filenames[1])
 
 
-class Ergo2(AExternalTCRSpecificityPrediction):
+class Ergo2(ARepoTCRSpecificityPrediction):
     """
-    Implements ERGO-II, a deep learning based method for predicting TCR and epitope peptide binding by Springer et al.
+    Author: Springer et al.
     Paper: https://www.frontiersin.org/articles/10.3389/fimmu.2021.664514/full
     Repo: https://github.com/IdoSpringer/ERGO-II
     """
     __name = "ERGO-II"
     __version = ""
+    __tcr_length = (0, 30)  # TODO
+    __epitope_length = (0, 30)  # TODO
+    __repo = "https://github.com/IdoSpringer/ERGO-II.git"
 
     @property
     def name(self):
@@ -133,6 +68,18 @@ class Ergo2(AExternalTCRSpecificityPrediction):
     @property
     def version(self):
         return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
 
     def format_tcr_data(self, tcrs, epitopes, pairwise):
         rename_columns = {
@@ -159,34 +106,19 @@ class Ergo2(AExternalTCRSpecificityPrediction):
         df_tcrs = df_tcrs.rename(columns={"Epitope": "Peptide"})
 
         df_tcrs = df_tcrs[required_columns]
+        df_tcrs = self.filter_by_length(df_tcrs, None, "TRB", "Peptide")
+        df_tcrs = df_tcrs[(~df_tcrs["TRB"].isna()) & (df_tcrs["TRB"] != "")]
         return df_tcrs
 
-    def save_tmp_files(self, data):
-        tmp_folder = self.get_tmp_folder_path()
-        path_in = os.path.join(tmp_folder.name, "ergo_ii_input.csv")
-        path_out = os.path.join(tmp_folder.name, "ergo_ii_output.csv")
-        data.to_csv(path_in, index=False)
-        return [path_in, path_out], tmp_folder
-
-    def run_exec_cmd(self, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
-        if repository == "" or not os.path.isdir(repository):
-            raise NotADirectoryError(f"Repository: '{repository}' does not exist."
-                                     f"Please provide a keyword argument repository with the path to the ERGO-II.\n"
-                                     f"You can obtain the repo via: "
-                                     f"'git clone https://github.com/IdoSpringer/ERGO-II.git'")
-        os.chdir(repository)
-        self.correct_code(repository)
-
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         dataset = "vdjdb" if "dataset" not in kwargs else kwargs["dataset"]
-        interpreter = "python" if interpreter is None else interpreter
-        repository = "" if repository is None else f"{repository}/"
-        cmds = []
-        if cmd_prefix is not None:
-            cmds.append(cmd_prefix)
-        if conda is not None:
-            cmds.append(f"conda activate {conda}")
-        cmds.append(f"{interpreter} {repository}Predict.py {dataset} {filenames[0]} {filenames[1]}")
-        self.exec_cmd("\n".join(cmds), filenames[1])
+        return f"Predict.py {dataset} {filenames[0]} {filenames[1]}"
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        if repository is not None and repository != "" and os.path.isdir(repository):
+            os.chdir(repository)
+            self.correct_code(repository)
+        super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
 
     def format_results(self, filenames, tcrs, pairwise):
         results_predictor = pd.read_csv(filenames[1])
@@ -224,15 +156,17 @@ class Ergo2(AExternalTCRSpecificityPrediction):
             shutil.move(os.path.join(path_repo, "Models", "AE"), os.path.join(path_repo, "TCR_Autoencoder"))
 
 
-class ImRex(AExternalTCRSpecificityPrediction):
+class pMTnet(ARepoTCRSpecificityPrediction):
     """
-    Implements ImRex (Interaction Map Recognition).
-    Paper: https://doi.org/10.1093/bib/bbaa318
-    Repo: https://github.com/pmoris/ImRex
-
+    Author: Lu et al.
+    Paper: https://www.nature.com/articles/s42256-021-00383-2
+    Repo: https://github.com/tianshilu/pMTnet
     """
-    __name = "ImRex"
+    __name = "pMTnet"
     __version = ""
+    __trc_length = (0, 40) # todo
+    __epitope_length = (0, 40) # todo
+    __cmd = "pMTnet.py"
 
     @property
     def version(self):
@@ -242,87 +176,57 @@ class ImRex(AExternalTCRSpecificityPrediction):
     def name(self):
         return self.__name
 
-    def prepare_dataset_IMRex(self, df: pd.DataFrame, filename: str = None):
-        """
-        process the dataset in the way to be suitable with ImRex
-        :param df: a dataframe contains at least TRB seqs and corresponding epitopes to predict, if they bind or not
-        :param filename: str representing the name of the file to save the processed dataset
-        :return: (pd.DataFrame, pd.core.series.Series), where the dataframe has all samples, which have cdr3-beta-seqs,
-        that are 10-20 aas long, and epitopes, which are 8-11 aas long. The function returns additionally series, which
-        holds true values for the accepted samples, otherwise false values.
-        :rtype pd.DataFrame, pd.core.series.Series
-        """
-        # accept only cdr3ß-sequences, which are 10-20 aas long and only epitopes, which are 8-11 aas long
-        mask = (df["TRB"].str.len() >= 10) & (df["TRB"].str.len() <= 20) & (df["Peptide"].str.len() >= 8) & (
-                    df["Peptide"].str.len() <= 11)
-        test_set = df.loc[mask, ]
-        # select only the required feature to run IMRex
-        test_set = test_set.loc[:, ["TRB", "Peptide"]]
-        # remove all observation, in which no cdr3 beta seq or peptide seq doesn't occur
-        test_set = test_set.loc[(test_set["TRB"] != "") & (test_set["Peptide"] != ""), ]
-        # change column names according to https://github.com/pmoris/ImRex#predictions-using-the-pre-built-model
-        test_set.columns = ['cdr3', 'antigen.epitope']
-        # remove all entries, where cdr3 beta does not present
-        test_set.dropna(inplace=True)
-        # remove duplicates
-        # test_set = test_set.drop_duplicates(subset=["cdr3", "antigen.epitope"], keep='first').reset_index(drop=True)
-        if filename:
-            test_set.to_csv(filename, sep=";", index=False)
-        return test_set, mask
+    @property
+    def tcr_length(self):
+        return self.__trc_length
 
-    def predict_from_dataset(self, repository: str, path: str = None, df: pd.DataFrame = None, source: str = None,
-                             score: int = 1, **kwargs):
-        if path is None and df is None:
-            raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        if df is None:
-            if os.path.isfile(path):
-                df = process_dataset_TCR(path=path, source=source, score=score)
-            else:
-                raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def cmd(self):
+        return self.__cmd
+
+    def input_check(self, tcrs, epitopes, pairwise):
+        super().input_check(tcrs, epitopes, pairwise)
+        allowed_alleles = ["HLA-A", "HLA-B", "HLA-C", "HLA-E"]
+        for epitope in epitopes:
+            if epitope.allele is None:
+                raise ValueError("Missing MHC-Annotation: pMTnet requires MHC information")
+            if epitope.allele[:5] not in allowed_alleles:
+                raise ValueError(f"Invalid MHC {epitope.allele}: pMTnet requires MHC out of {allowed_alleles}")
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        rename_columns = {
+            "VDJ_cdr3": "CDR3",
+        }
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
         else:
-            df = process_dataset_TCR(df=df, source=source, score=score)
-        if not os.path.isdir(repository):
-            raise NotADirectoryError("please pass a path as a string to a local ImRex repository. To clone the "
-                                     "repository type: 'git clone https://github.com/pmoris/ImRex.git' in the terminal")
-        # prepare the test set to be suitable with ImRex
-        tmp_file = NamedTemporaryFile(delete=False)
-        test_set, mask = self.prepare_dataset_IMRex(df=df, filename=tmp_file.name)
-        if "down" in kwargs:
-            down = kwargs["down"]
-        else:
-            down = False
-        if down:
-            model = os.path.join(repository, 'models/pretrained/2020-07-24_19-18-39_trbmhcidown-shuffle-padded-b32-lre4'
-                                             '-reg001/2020-07-24_19-18-39_trbmhcidown-shuffle-padded-b32-lre4-reg001.h5')
-        else:
-            model = os.path.join(repository, 'models/pretrained/2020-07-30_11-30-27_trbmhci-shuffle-padded-b32-lre4-'
-                                             'reg001/2020-07-30_11-30-27_trbmhci-shuffle-padded-b32-lre4-reg001.h5')
-        script = os.path.join(repository, "src/scripts/predict/predict.py")
-        tmp_out = NamedTemporaryFile(delete=False)
-        cmd = f"python {script} --model {model} --input {tmp_file.name} --output {tmp_out.name}"
-        try:
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
-            stdo, stde = p.communicate()
-            stdr = p.returncode
-            if stdr > 0:
-                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
-            if os.path.getsize(tmp_out.name) == 0:
-                raise RuntimeError(
-                    "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
-                    stdo.decode())
-        except Exception as e:
-            raise RuntimeError(e)
-        os.remove(tmp_file.name)
-        result = self.parse_external_result(file=tmp_out.name, df=df)
-        tmp_out.close()
-        os.remove(tmp_out.name)
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
-        df_result.index = pd.MultiIndex.from_tuples(
-            [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
-            names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
-        if sum(mask) < df.shape[0]:
-            print(f"ImRex's trained model could not make predictions for some samples, which have either "
-                  f"cdr3-beta-seqs, that are not 10-20 aas long or epitopes, that are not 8-11 aas long. These samples "
-                  f"have prediction score of -1")
-        return df_result
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "Antigen", "MHC": "HLA"})
+        df_tcrs = df_tcrs[["cdr3", "Antigen", "HLA"]]
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3", "Antigen")
+        df_tcrs = df_tcrs[(~df_tcrs["cdr3"].isna()) & (df_tcrs["cdr3"] != "")]
+        df_tcrs["HLA"] = df_tcrs["HLA"].str[4:]
+        return df_tcrs
+
+    def save_tmp_files(self, data):
+        filenames, tmp_dir = super().save_tmp_files(data)
+        filenames.append(f"{tmp_dir}/{self.name}_logs.log")
+        return filenames, tmp_dir
+
+    def get_base_cmd(self, filenames, tmp_folder, **kwargs):
+        #(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository=None):
+        cmds.append(f"{interpreter} {repository}/pMTnet.py -input {filenames[0]} -library {repository}/library "
+                    f"-output {filenames[1]} -output_log {filenames[2]}")
+        self.__cmd = self.__cmd.split(" ") + f" -library {repository}/library "
+        super().run_exec_cmd(filenames, interpreter, conda, cmd_prefix, repository, **kwargs)
+
+    def format_results(self, filenames, tcrs, pairwise):
+        results_predictor = pd.read_csv(filenames[1])
+        df_out = TCRSpecificityPredictionResult.from_output(results_predictor, tcrs, pairwise, self.name)
+        return df_out
+

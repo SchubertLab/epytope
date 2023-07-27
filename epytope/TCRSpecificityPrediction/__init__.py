@@ -1,7 +1,8 @@
-__author__ = 'albahah'
+__author__ = 'albahah, drost'
 
 
 from epytope.Core.Base import ATCRSpecificityPrediction
+from epytope.TCRSpecificityPrediction.ML import *
 from epytope.TCRSpecificityPrediction.External import *
 
 try:

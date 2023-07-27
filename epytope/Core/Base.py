@@ -420,6 +420,16 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         """
         raise NotImplementedError
 
+    @property
+    @abc.abstractmethod
+    def tcr_length(self):
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def epitope_length(self):
+        raise NotImplementedError
+
     @abc.abstractmethod
     def predict(self, tcrs, epitopes, pairwise=True, **kwargs):
         """
@@ -499,7 +509,13 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
                 raise ValueError(f"len(tcrs) ({len(tcrs.receptors)}) must equal len(epitopes) ({len(epitopes)}) "
                                  f"when pairwise==False")
 
-
+    def filter_by_length(self, df_data, col_tra, col_trb, col_epitope):
+        for col, lengths in [(col_tra, self.tcr_length), (col_trb, self.tcr_length),
+                             (col_epitope, self.epitope_length)]:
+            if col is None:
+                continue
+            df_data = df_data[(df_data[col].str.len() >= lengths[0]) & (df_data[col].str.len() <= lengths[1])]
+        return df_data.copy()
 
 
 class ATCRDatasetAdapter(object, metaclass=APluginRegister):
