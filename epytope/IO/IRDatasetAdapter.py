@@ -34,7 +34,8 @@ class IRDataset(metaclass=ABCMeta):
                        prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
                        suffix_chain_type="chain_type", suffix_cdr3="cdr3",
                        suffix_v_gene="v_gene", suffix_d_gene="d_gene", suffix_j_gene="j_gene"):
-        df_irs = df_irs[df_irs[f"{prefix_vj_chain}{suffix_cdr3}"].isna() | df_irs[f"{prefix_vdj_chain}{suffix_cdr3}"]]
+        df_irs = df_irs[~df_irs[f"{prefix_vj_chain}{suffix_cdr3}"].isna() |
+                        ~df_irs[f"{prefix_vdj_chain}{suffix_cdr3}"].isna()]
         repertoire = []
         for i, row in df_irs.iterrows():
             organism = row[column_organism]
@@ -169,35 +170,84 @@ class VDJdbAdapter(IRDataset):
             # get only gene allele annotation form family name of v, j regions respectively
             df[["TRAV", "TRAJ", "TRBV", "TRBJ"]] = df[["TRAV", "TRAJ", "TRBV", "TRBJ"]].apply(substring)
             return process(df)
+"""
 
 
-class IEDBAdapter(IRDataset):
+class IEDBAdapter(ATCRDatasetAdapter, IRDataset):
+    __name = "iedb"
+    __version = "1.0.0"
+
     def __init__(self):
+        """
+        Extract TCR information from the IEDB Recetpor-Eptiope database-Format:
+        https://www.iedb.org/
+        Please download the database or related subset.
+        """
         super().__init__()
+        self.epitopes = None
 
     def from_path(self, path_csv, **kwargs):
-        df_irs = pd.read_csv(path_csv, sep=",", low_memory=False)
+        df_irs = pd.read_csv(path_csv, low_memory=False)
+        df_irs["Chain 1 Type"] = df_irs["Chain 1 Type"].replace({"alpha": "TRA", "gamma": "TRG"})
+        df_irs["Chain 2 Type"] = df_irs["Chain 2 Type"].replace({"beta": "TRB", "delta": "TRD"})
+        df_irs = df_irs.rename(columns={"Chain 1 Type": "Calculated Chain 1 Type",
+                                        "Chain 2 Type": "Calculated Chain 2 Type",
+                                        "Chain 1 CDR3 Calculated": "Calculated Chain 1 CDR3",
+                                        "Chain 2 CDR3 Calculated": "Calculated Chain 2 CDR3",
+                                        })
+
+        for col in ["Calculated Chain 1 CDR3", "Calculated Chain 2 CDR3"]:
+            df_irs[col] = df_irs[col].apply(lambda x: x if x == "" else f"C{x}F")
 
         rename_dict = {
-            "column_celltype": None, # todo
-            "column_organism": "Organism",
-            "prefix_vj_chain": "Calculated Chain 1", # check whether VJ and VDJ right todo
-            "prefix_vdj_chain":  "Calculated Chain 2",
-            "suffix_chain_type": 'chain_type',
+            "column_celltype": "Response Type",
+            "prefix_vj_chain": "Calculated Chain 1 ",
+            "prefix_vdj_chain":  "Calculated Chain 2 ",
+            "suffix_chain_type": "Type",
             "suffix_cdr3": "CDR3",
             "suffix_v_gene": "V Gene",
-            "suffic_d_gene": None,  # todo
-            "suffix_j_gene": "J gene"
+            "suffix_d_gene": "D Gene",
+            "suffix_j_gene": "J Gene"
         }
+        df_irs = df_irs.replace("nan", "")
+        df_irs["organism"] = ""
+
+        keep_cols = ["Response Type", "organism", "Calculated Chain 1 V Gene", "Calculated Chain 1 J Gene",
+                     "Calculated Chain 1 CDR3", "Calculated Chain 1 Type", "Calculated Chain 2 V Gene",
+                     "Calculated Chain 2 D Gene", "Calculated Chain 2 J Gene",
+                     "Calculated Chain 2 CDR3", "Calculated Chain 2 Type", "Description", "MHC Allele Names"]
+        df_irs = df_irs[keep_cols]
+        df_irs = df_irs.fillna("")
+
+        for col in ["Calculated Chain 1 CDR3", "Calculated Chain 2 CDR3", "Description"]:
+            df_irs = df_irs[df_irs[col].str.match("^[ACDEFGHIKLMNPQRSTVWY]*$")]
+
+        df_irs.drop_duplicates(keep='first', inplace=True)
+        df_irs = df_irs[(df_irs["Calculated Chain 1 CDR3"] != "") | (df_irs["Calculated Chain 2 CDR3"] != "")]
+        df_irs = df_irs[df_irs["Calculated Chain 1 CDR3"].isna() | df_irs["Calculated Chain 2 CDR3"]]
+
+        self.save_eptiopes(df_irs)
         self.from_dataframe(df_irs, **rename_dict)
-        df.insert(6, "T-Cell-Type", "")
-        df.insert(9, "Species", "")
-        df[["TRA", "TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]] = \
-            df[["TRA", "TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]].replace("nan", "")
-        df.fillna("", inplace=True)
-        df.drop_duplicates(subset=["TRA", "TRB", "Peptide"], keep='first', inplace=True)
-        df = df[df["TRB"] != ""]
-"""
+
+    def save_eptiopes(self, df_epitopes):
+        epitopes = []
+        for i, row in df_epitopes[["Description", "MHC Allele Names"]].iterrows():
+            if row["Description"] != "":
+                new_epitope = TCREpitope(peptide=Peptide(row["Description"]),
+                                         allele=row["MHC Allele Names"].split(",")[0]
+                                         if row["MHC Allele Names"] != "" else None)
+            else:
+                new_epitope = None
+            epitopes.append(new_epitope)
+        self.epitopes = epitopes
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
 
 
 class McPasAdapter(ATCRDatasetAdapter, IRDataset):
@@ -248,7 +298,7 @@ class McPasAdapter(ATCRDatasetAdapter, IRDataset):
     def save_eptiopes(self, df_epitopes):
         epitopes = []
         for i, row in df_epitopes[["Epitope.peptide", "MHC"]].iterrows():
-            if re.match(r"^[ACDEFGHIKLMNPQRSTVWY]*$", row["Epitope.peptide"]):
+            if row["Epitope.peptide"] != "":
                 new_epitope = TCREpitope(peptide=Peptide(row["Epitope.peptide"]),
                                          allele=row["MHC"] if row["MHC"] != "" else None)
             else:
@@ -298,7 +348,7 @@ class ScirpyAdapter(ATCRDatasetAdapter, IRDataset):
             if col in kwargs:
                 rename_dict[col] = kwargs[col]
             else:
-                df_irs[col] = ""
+                df_irs[col.split("_")[1]] = ""
 
         # Assign celltype if not provided by chain annotation
         if "column_celltype" not in kwargs:
@@ -310,7 +360,7 @@ class ScirpyAdapter(ATCRDatasetAdapter, IRDataset):
                 return ""
             df_irs["celltype"] = df_irs.apply(get_celltype, axis=1)
 
-        required_columns = ["column_celltype", "column_organism"]
+        required_columns = ["celltype", "organism"]
         for chain in ["IR_VJ_1_", "IR_VDJ_1_"]:
             for entry in ["locus", "junction_aa", "v_call", "d_call", "j_call"]:
                 required_columns.append(f"{chain}{entry}")
@@ -337,35 +387,22 @@ class ScirpyAdapter(ATCRDatasetAdapter, IRDataset):
         return self.__version
 
 
-'''
-class AIRRAdapter(IRDataset):
+class AIRRAdapter(ScirpyAdapter, IRDataset):
+    __name = "airr"
+    __version = "scirpy:0.10.1"
+
     def __init__(self):
         super().__init__()
 
+    @property
+    def name(self):
+        return self.__name
 
+    @property
+    def version(self):
+        return self.__version
 
-def process_dataset_TCR(path: str = None, df: pd.DataFrame = None, source: str = None, score: int = 1) \
-        -> pd.DataFrame:
-
-    def substring(column):
-        """
-        helper function to get gene allele annotation from family name of v,j regions
-        :param column: pd.Series, where entries are the family name of v,j regions
-        """
-        return column.apply(lambda x: re.search(r"^\w*(-\d+)*", str(x)).group() if x != "" else x)
-
-
-    def process(df: pd.DataFrame, source: str = None) -> pd.DataFrame:
-        """
-        helper function to check for invalid protein sequences in upper case.
-        All rows with invalid cdr3 beta seqs will be removed, whereas invalid cdr3 alpha seqs will be replaced with an
-        empty string
-        :param df: a dataframe, which will be processed
-        :param str source: the source of the dataset [vdjdb, McPAS, scirpy, IEDB].
-        :return: returns the processed dataframe
-        :rtype: `pd.DataFrame`
-        """
-        df.loc[:, "MHC"] = df["MHC"].apply(lambda x: re.search(r".*?(?=:)|.*", str(x)).group())
-        df["TRA"] = df["TRA"].str.upper()
-        df["TRB"] = df["TRB"].str.upper()
-'''
+    def from_path(self, path, **kwargs):
+        import scirpy as ir
+        adata = ir.io.read_airr(path)
+        self.from_object(adata, **kwargs)

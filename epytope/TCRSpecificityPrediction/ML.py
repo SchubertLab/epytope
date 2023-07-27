@@ -5,240 +5,246 @@
 """
 .. module:: TCRSpecificityPrediction.ML
    :synopsis: This module contains all classes for ML-based TCR-epitope binding prediction.
-.. moduleauthor:: albahah
+.. moduleauthor:: albahah, drost
 """
 
+import abc
 import os
 import subprocess
 import tempfile
 import numpy as np
 import pandas as pd
-from tempfile import NamedTemporaryFile
-from epytope.Core.Base import AExternal
-from epytope.TCRSpecificityPrediction.External import AExternalTCRSpecificityPrediction
+from epytope.Core.Base import ATCRSpecificityPrediction
+from epytope.Core.TCREpitope import TCREpitope
+from epytope.Core.ImmuneReceptor import ImmuneReceptor
+from epytope.IO.IRDatasetAdapter import IRDataset
 from epytope.Core.Result import TCRSpecificityPredictionResult
 import re
-from pytoda.proteins.utils import aas_to_smiles
+# from pytoda.proteins.utils import aas_to_smiles
 from pathlib import Path
 from typing import Tuple
 
 
-class Ergo2(AExternalTCRSpecificityPrediction, AExternal):
+class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
     """
-    Implements ERGO, a deep learning based method for predicting TCR and epitope peptide binding.
-
+        Abstract base class for external TCR specificity prediction methods.
+        Implements predict functionality.
     """
-    __name = "ERGO-II"
-    __command = "python Predict.py"
-    __version = " "
 
-    @property
-    def version(self) -> str:
+    def predict(self, tcrs, epitopes, pairwise=True, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         """
-        The version of the Method
+        Predicts binding score between a T-cell receptor and an epitope.
+        :param tcrs: the T cell receptors containing the sequence and gene information
+        :type tcrs: :class:`~epytope.Core.ImmuneReceptor.TCellreceptor`
+        or list(:class:`~epytope.Core.ImmuneReceptor.TCellreceptor`) or :class:`~epytope.IO.IRDatasetAdapter.IRDataset`
+        :param epitopes: epitope sequences
+        :type  epitopes: str or :class:'~epytope.Core.TCREpitope.TCREpitope' or
+        list(:class:'~epytope.Core.TCREpitope.TCREpitope')
+        :param bool pairwise: predict binding between all tcr-epitope pairs.
+        Otherwise, tcrs[i] will be tested against epitopes[i] (requires len(tcrs)==len(epitopes))
+        :param str interpreter: path to the python interpreter, where the predictor is installed
+        :param str conda: conda environment of the predictor
+        :param str cmd_prefix: Prefix for the command line input before the predictor is executed, which can be used
+        to activate the environments (e.g. venv, poetry, ...) where the predictor is installed
+        :param kwargs: attributes that will be passed to the predictor without a check
+        :return: Returns a :class:`~epytope.Core.Result.TCRSpecificityPredictionResult` object for the specified
+                 :class:`~epytope.Core.ImmuneReceptor.TCRReceptor` and :class:`~epytope.Core.TCREpitope.TCREpitope`
+        :rtype: :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`
         """
-        return self.__version
+        if isinstance(epitopes, TCREpitope):
+            epitopes = [epitopes]
+        if isinstance(tcrs, ImmuneReceptor):
+            tcrs = [tcrs]
+        if isinstance(tcrs, list):
+            tcrs = IRDataset(tcrs)
+        if pairwise:
+            epitopes = list(set(epitopes))
 
-    @property
-    def command(self) -> str:
-        """
-        Defines the commandline call for external tool
-        """
-        return self.__command
+        self.input_check(tcrs, epitopes, pairwise)
+        data = self.format_tcr_data(tcrs, epitopes, pairwise)
+        filenames, tmp_folder = self.save_tmp_files(data)
+        cmd = self.get_base_cmd(filenames, tmp_folder, interpreter, conda, cmd_prefix, **kwargs)
+        self.run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, **kwargs)
+        df_results = self.format_results(filenames, tcrs, pairwise)
+        self.clean_up(tmp_folder, filenames)
+        return df_results
 
-    @property
-    def name(self) -> str:
-        """The name of the predictor"""
-        return self.__name
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        raise NotImplementedError
 
-    @property
-    def supportedPeptides(self) -> list:
+    def save_tmp_files(self, data):
         """
-        A list of valid Peptides
+        Saves a pd.DataFrame to a temporary directory.
+        :param pd.DataFrame data: Data frame containing tcr and epitope data
+        :return: list(str), str, containing the created files and the path to the tmp dir
         """
-        return []
+        tmp_folder = self.get_tmp_folder_path()
+        path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
+        path_out = os.path.join(tmp_folder.name, f"{self.name}_output.csv")
+        data.to_csv(path_in)
+        return [path_in, path_out], tmp_folder
 
-    def parse_external_result(self, file: str, df: pd.DataFrame):
-        """
-        Parses external results and returns the result
-        :param str file: The file path or the external prediction results
-        :param pd.DataFrame df: the complete processed dataframe
-        :return: A dictionary containing the prediction results
-        :rtype: dict{(str, str, str, str): float} {(Receptor_ID, TRA, TRB, Peptide): score}
-        """
-        result = pd.read_csv(file)[["TRA", "TRB", "Peptide", "Score"]]
-        result.index = df.index
-        result["Score"].astype(float)
-        result.insert(0, "Receptor_ID", df["Receptor_ID"])
-        result.fillna("", inplace=True)
-        result["Receptor_ID"].astype(str)
-        return {self.name: {
-                            row[:4]: float("{:.4f}".format(row[4]))
-                            for row in result.itertuples(index=False)
-                           }
-               }
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        raise NotImplementedError
 
-    def get_external_version(self, path=None):
+    def get_package_dir(self, name, interpreter=None, conda=None, cmd_prefix=None):
         """
-        Returns the external version of the tool by executing
-        >{command} --version
-        might be dependent on the method and has to be overwritten
-        therefore it is declared abstract to enforce the user to
-        overwrite the method. The function in the base class can be called
-        with super()
-        :param str path: - Optional specification of executable path if deviant from self.__command
-        :return: The external version of the tool or None if tool does not support versioning
-        :rtype: str
+        Returns the path of a named model in this environment.
         """
-        return None
-
-    def predict(self, peptides, TCRs, repository: str, all: bool, **kwargs):
-        """
-        Overwrites ATCRSpecificityPrediction.predict
-
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide.
-        :param peptides: The TCREpitope objects for which predictions should be performed
-        :type peptides: :class:`~epytope.Core.TCREpitope.TCREpitope` or list(:class:`~epytope.Core.TCREpitope.TCREpitope`)
-        :param TCRs: T cell receptor objects
-        :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
-        list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
-        :param str repository: a path to a local github repository of ERGO-II predictor
-        :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
-        the prediction will be preformed in the same order of the passed peptides and TCRs objects
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
-        df = super().predict(peptides=peptides, TCRs=TCRs, repository=repository, all=all)
-        if "trained_on" in kwargs:
-            trained_on = kwargs["trained_on"]
-        else:
-            trained_on = "vdjdb"
-        df_result = self.predict_from_dataset(repository=repository, df=df, score=-1, trained_on=trained_on)
-        return df_result
-
-    def predict_from_dataset(self, repository: str, path: str = None, df: pd.DataFrame = None, source: str = "",
-                             score: int = 1, **kwargs):
-        """
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide.
-        The path should lead to csv file with fixed column names dataset.columns = ['TRA', 'TRB', "TRAV", "TRAJ",
-        "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species", "Antigen.species", "Tissue"]. If some values for
-        one or more variables are unavailable, leave them as blank cells.
-        :param str repository: a path to a local github repository of ERGO-II predictor
-        :param str path: a string representing a path to the dataset(csv file), which will be precessed. Default value
-        is None, when the dataframe object is given
-        :param `pd.DataFrame` df: a dataframe object. Default value is None, when the path is given
-        :param str source: the source of the dataset [vdjdb, mcpas, scirpy, IEDB]. If this parameter is not passed,
-         the dataset should be a csv file with the column names mentioned above
-        :param int score: An integer representing a confidence score between 0 and 3 (0: critical information missing,
-        1: medium confidence, 2: high confidence, 3: very high confidence). By processing all entries with a confidence
-        score >= the passed parameter score will be kept. Default value is 1
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
-        def substring(column):
-            """
-            helper function to get gene allele annotation from family name of v,j regions
-            :param column: pd.Series, where entries are the family name of v,j regions
-            """
-            return column.apply(lambda x: re.search(r"^\w*(-\d+)*", str(x)).group() if x != "" else x)
-
-        if path is None and df is None:
-            raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        if df is None:
-            if os.path.isfile(path):
-                df = process_dataset_TCR(path=path, source=source, score=score)
-            else:
-                raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        else:
-            df = process_dataset_TCR(df=df, source=source, score=score)
-        if not os.path.isdir(repository):
-            raise NotADirectoryError("please pass a path as a string to a local ERGO-II repository. To clone the "
-                                     "repository type: 'git clone https://github.com/IdoSpringer/ERGO-II.git' in the "
-                                     "terminal")
-        # get only gene allele annotation form family name of v, j regions respectively
-        df[["TRAV", "TRAJ", "TRBV", "TRBJ"]] = df[["TRAV", "TRAJ", "TRBV", "TRBJ"]].apply(substring)
-        ergo_df = df[['TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC"]]
-        ergo_df = ergo_df[(ergo_df["Peptide"] != "") & (ergo_df["TRB"] != "")]
-        script_path = os.path.join(repository, "Predict.py")
-        if not os.path.exists(script_path):
-            raise FileNotFoundError("Please pass a path to the local ERGO-II repository on your computer")
-        else:
-            # editing Predict script to save the result as csv file into the tmp_out file
-            os.chdir(repository)
-            script = []
-            with open("Predict.py", "r") as f:
-                script.extend(f.readlines())
-            if "    df.to_csv(sys.argv[3], sep=',', index=False)\n" not in script:
-                idx = script.index('    df = predict(sys.argv[1], sys.argv[2])\n')
-                script.insert(idx + 1, "    df.to_csv(sys.argv[3], sep=',', index=False)\n")
-                with open("Predict.py", "w") as f:
-                    f.writelines(script)
-        tmp_file = NamedTemporaryFile(delete=False)
-        ergo_df.to_csv(tmp_file.name, sep=",", index=False)
-        tmp_out = NamedTemporaryFile(delete=False)
-        if "trained_on" in kwargs:
-            if kwargs["trained_on"].lower() in ["vdjdb", "mcpas"]:
-                trained_on = kwargs["trained_on"]
-            else:
-                trained_on = "vdjdb"
-        elif source and source.lower() in ["vdjdb", "mcpas"]:
-            trained_on = source.lower()
-        else:
-            trained_on = "vdjdb"
+        interpreter = "python" if interpreter is None else interpreter
+        cmds = []
+        if cmd_prefix is not None:
+            cmds.append(cmd_prefix)
+        if conda is not None:
+            cmds.append(f"conda activate {conda}")
+        cmd = f"import pkgutil; import sys; print(pkgutil.get_loader('{name}').get_filename())"
+        cmd = f'{interpreter} -c "{cmd}"'
+        cmds.append(cmd)
+        cmd = " && ".join(cmds)
         try:
-            cmd = self.__command
-            cmd += f" {trained_on.lower()} {tmp_file.name} {tmp_out.name}"
             p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+            stdo, stde = p.communicate()
+            stdr = p.returncode
+            if stdr > 0 or len(stdo.decode()) == 0:
+                raise RuntimeError(f"Not able to find {name} for {self.name}. Did you install the package?"
+                                   f"{stdo.decode()}"
+                                   f"{stde.decode()}")
+        except Exception as e:
+            raise RuntimeError(e)
+        return stdo.decode()
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        interpreter = "python" if interpreter is None else interpreter
+        cmds = []
+        if cmd_prefix is not None:
+            cmds.append(cmd_prefix)
+        if conda is not None:
+            cmds.append(f"conda activate {conda}")
+        cmds.append(f"{interpreter} -m {cmd}")
+        self.exec_cmd(" && ".join(cmds), filenames[1])
+
+    def format_results(self, filenames, tcrs, pairwise):
+        raise NotImplementedError
+
+    def clean_up(self, tmp_folder, files=None):
+        """
+        Removes temporary directories and files.
+        :param tmp_folder: path to the folder where temporary data of this predictor is stored
+        :type tmp_folder: :class:`tempfile:TemporaryDirector`
+        :param list(str) files: additional list of files that will be removed
+        """
+        tmp_folder.cleanup()
+        if files is not None:
+            for file in files:
+                if tmp_folder.name not in file:
+                    os.remove(file)
+
+    def get_tmp_folder_path(self):
+        """
+        Create a new folder in tmp for intermediate results.
+        :return: path to the folder
+        """
+        return tempfile.TemporaryDirectory()
+
+    def exec_cmd(self, cmd, tmp_path_out):
+        """
+        Run a command in a subprocess.
+        :param str cmd: shell command
+        :param str tmp_path_out: path to the output file
+        """
+        try:
+            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, #PIPE,
                                  stderr=subprocess.STDOUT)
             stdo, stde = p.communicate()
             stdr = p.returncode
             if stdr > 0:
                 raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
-            if os.path.getsize(tmp_out.name) == 0:
+            if not os.path.exists(tmp_path_out) or os.path.getsize(tmp_path_out) == 0:
                 raise RuntimeError(
                     "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
                     stdo.decode())
         except Exception as e:
             raise RuntimeError(e)
-        os.remove(tmp_file.name)
-        result = self.parse_external_result(tmp_out.name, df)
-        tmp_out.close()
-        os.remove(tmp_out.name)
-        df_result = TCRSpecificityPredictionResult.from_dict(result,,
-        df_result.index = pd.MultiIndex.from_tuples([tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
-                                                        names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
-        return df_result
 
 
-class TITAN(AExternalTCRSpecificityPrediction, AExternal):
+class ImRex(ACmdTCRSpecificityPrediction):
+    """
+    Author: Moris et al.
+    Paper: https://doi.org/10.1093/bib/bbaa318
+    Repo: https://github.com/pmoris/ImRex
+    """
+    __name = "ImRex"
+    __version = ""
+    __tcr_length = (10, 20)
+    __epitope_length = (8, 11)
+    __cmd = "todo"  #todo
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def cmd(self):
+        return self.__cmd
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        rename_columns = {
+            "VDJ_cdr3": "cdr3",
+        }
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "antigen.epitope"})
+        df_tcrs = df_tcrs[["cdr3", "antigen.epitope", "MHC"]]
+        df_tcrs = self.filter_by_length(df_tcrs, None, "cdr3", "antigen.epitope")
+        df_tcrs = df_tcrs[(~df_tcrs["cdr3"].isna()) & (df_tcrs["cdr3"] != "")]
+        return df_tcrs
+
+    def save_tmp_files(self, data):
+        tmp_folder = self.get_tmp_folder_path()
+        path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
+        path_out = os.path.join(tmp_folder.name, f"{self.name}_output.csv")
+        data.to_csv(path_in, index=False, sep=";")
+        return [path_in, path_out], tmp_folder
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        path_module = self.get_package_dir("src", interpreter, conda, cmd_prefix).split(os.sep)[:-1]
+        path_module = os.sep.join(path_module)
+        model = f"2020-07-24_19-18-39_trbmhcidown-shuffle-padded-b32-" \
+                f"lre4-reg001/2020-07-24_19-18-39_trbmhcidown-shuffle-padded-b32-lre4-reg001.h5"
+        if "model" in kwargs:
+            model = kwargs["model"]
+        model = f"{path_module}/../models/pretrained/{model}"
+
+        cmd = f"src.scripts.predict.predict --model {model} --input {filenames[0]} --output {filenames[1]}"
+        return cmd
+
+    def format_results(self, filenames, tcrs, pairwise):
+        results_predictor = pd.read_csv(filenames[1])
+        results_predictor["MHC"] = results_predictor["MHC"].fillna("")
+        results_predictor = results_predictor.rename(columns={"antigen.epitope": "Peptide",
+                                                              "prediction_score": "Score"})
+        df_out = TCRSpecificityPredictionResult.from_output(results_predictor, tcrs, pairwise, self.name)
+        return df_out
+
+
+class TITAN(ACmdTCRSpecificityPrediction):
     """
     Implements Tcr epITope bimodal Attention Networks (TITAN). The provided trained model can be downloaded from
 
@@ -555,761 +561,38 @@ class TITAN(AExternalTCRSpecificityPrediction, AExternal):
             print(f"TITAN's trained model can not make predictions for those samples, which their v- or "
                   f"j-regions are not included in the human v- or j-regions given by IMGT. Therefore the prediction "
                   f"score for these samples will be -1.")
-        df_result = TCRSpecificityPredictionResult.from_dict(result,,
+        df_result = TCRSpecificityPredictionResult.from_dict(result)
         df_result.index = pd.MultiIndex.from_tuples([tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
                                                         names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
         return df_result
 
 
-class ImRex(AExternalTCRSpecificityPrediction, AExternal):
+class ATM_TCR():
     """
-    Implements ImRex (Interaction Map Recognition). "https://github.com/pmoris/ImRex"
-
+    Author: Cai
+    Paper: https://www.frontiersin.org/articles/10.3389/fimmu.2022.893247/full
+    Repo: https://github.com/Lee-CBG/ATM-TCR
     """
-    __name = "ImRex"
-    __command = "python src/scripts/predict/predict.py"
-    __version = " "
+    __name = "ATM-TCR"
+    __version = ""
+    __trc_length = (0, 40) # todo
+    __epitope_length = (0, 40) # todo
 
     @property
-    def version(self) -> str:
-        """
-        The version of the Method
-        """
+    def version(self):
         return self.__version
 
     @property
-    def command(self) -> str:
-        """
-        Defines the commandline call for external tool
-        """
-        return self.__command
-
-    @property
-    def name(self) -> str:
-        """The name of the predictor"""
+    def name(self):
         return self.__name
 
     @property
-    def supportedPeptides(self) -> list:
-        """
-        A list of valid Peptides
-        """
-        return []
-
-    def parse_external_result(self, file: str, df: pd.DataFrame):
-        """
-        Parses external results and returns the result
-        :param str file: The file path or the external prediction results
-        :param pd.DataFrame df: the complete processed dataframe
-        :return: A dictionary containing the prediction results
-        :rtype: dict{(str, str, str, str): float} {(Receptor_ID, TRA, TRB, Peptide): score}
-        """
-        outcome = pd.read_csv(file)[["cdr3", "antigen.epitope", "prediction_score"]]
-        outcome.rename(columns={"cdr3":"TRB", "antigen.epitope": "Peptide", "prediction_score": "Score"}, inplace=True)
-        result = df.loc[:, ["Receptor_ID", "TRA", "TRB", "Peptide"]]
-        result = result.merge(outcome, on=["TRB", "Peptide"], how="left")
-        result.loc[:, "Score"] = result["Score"].map(lambda x: -1 if pd.isna(x) else x)
-        result["Score"].astype(float)
-        result.fillna("", inplace=True)
-        result["Receptor_ID"].astype(str)
-        return {self.name: {
-                            row[:4]: float("{:.4f}".format(row[4]))
-                            for row in result.itertuples(index=False)
-                           }
-               }
-
-    def get_external_version(self, path=None):
-        """
-        Returns the external version of the tool by executing
-        >{command} --version
-        might be dependent on the method and has to be overwritten
-        therefore it is declared abstract to enforce the user to
-        overwrite the method. The function in the base class can be called
-        with super()
-        :param str path: - Optional specification of executable path if deviant from self.__command
-        :return: The external version of the tool or None if tool does not support versioning
-        :rtype: str
-        """
-        return None
-
-    def predict(self, peptides, TCRs, repository: str, all: bool, **kwargs):
-        """
-        Overwrites ATCRSpecificityPrediction.predict
-
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide
-        :param peptides: The TCREpitope objects for which predictions should be performed
-        :type peptides: :class:`~epytope.Core.TCREpitope.TCREpitope` or list(:class:`~epytope.Core.TCREpitope.TCREpitope`)
-        :param TCRs: T cell receptor objects
-        :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
-        list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
-        :param str repository: a path to a local github repository of ImRex predictor
-        :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
-        the prediction will be preformed in the same order of the passed peptides and TCRs objects
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
-        df = super().predict(peptides=peptides, TCRs=TCRs, repository=repository, all=all)
-        if "down" in kwargs:
-            down = kwargs["down"]
-        else:
-            down = False
-        df_result = self.predict_from_dataset(repository=repository, df=df, score=-1, down=down)
-        return df_result
-
-    def prepare_dataset_IMRex(self, df: pd.DataFrame, filename: str = None) -> \
-            Tuple[pd.DataFrame, pd.core.series.Series]:
-        """
-        process the dataset in the way to be suitable with ImRex
-        :param df: a dataframe contains at least TRB seqs and corresponding epitopes to predict, if they bind or not
-        :param filename: str representing the name of the file to save the processed dataset
-        :return: (pd.DataFrame, pd.core.series.Series), where the dataframe has all samples, which have cdr3-beta-seqs,
-        that are 10-20 aas long, and epitopes, which are 8-11 aas long. The function returns additionally series, which
-        holds true values for the accepted samples, otherwise false values.
-        :rtype pd.DataFrame, pd.core.series.Series
-        """
-        # accept only cdr3ß-sequences, which are 10-20 aas long and only epitopes, which are 8-11 aas long
-        mask = (df["TRB"].str.len() >= 10) & (df["TRB"].str.len() <= 20) & (df["Peptide"].str.len() >= 8) & (
-                    df["Peptide"].str.len() <= 11)
-        test_set = df.loc[mask, ]
-        # select only the required feature to run IMRex
-        test_set = test_set.loc[:, ["TRB", "Peptide"]]
-        # remove all observation, in which no cdr3 beta seq or peptide seq doesn't occur
-        test_set = test_set.loc[(test_set["TRB"] != "") & (test_set["Peptide"] != ""), ]
-        # change column names according to https://github.com/pmoris/ImRex#predictions-using-the-pre-built-model
-        test_set.columns = ['cdr3', 'antigen.epitope']
-        # remove all entries, where cdr3 beta does not present
-        test_set.dropna(inplace=True)
-        # remove duplicates
-        # test_set = test_set.drop_duplicates(subset=["cdr3", "antigen.epitope"], keep='first').reset_index(drop=True)
-        if filename:
-            test_set.to_csv(filename, sep=";", index=False)
-        return test_set, mask
-
-    def predict_from_dataset(self, repository: str, path: str = None, df: pd.DataFrame = None, source: str = None,
-                             score: int = 1, **kwargs):
-        """
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide.
-        The path should lead to csv file with fixed column names dataset.columns = ['TRA', 'TRB', "TRAV", "TRAJ",
-        "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species", "Antigen.species", "Tissue"]. If some values for
-        one or more variables are unavailable, leave them as blank cells.
-        :param str repository: a path to a local github repository of ImRex predictor
-        :param str path: a string representing a path to the dataset(csv file), which will be processed. Default value
-        is None, when the dataframe object is given
-        :param `pd.DataFrame` df: a dataframe object. Default value is None, when the path is given
-        :param str source: the source of the dataset [vdjdb, mcpas, scirpy, IEDB]. If this parameter is not passed,
-         the dataset should be a csv file with the column names mentioned above
-        :param int score: An integer representing a confidence score between 0 and 3 (0: critical information missing,
-        1: medium confidence, 2: high confidence, 3: very high confidence). By processing all entries with a confidence
-        score >= the passed parameter score will be kept. Default value is 1
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
-
-        if path is None and df is None:
-            raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        if df is None:
-            if os.path.isfile(path):
-                df = process_dataset_TCR(path=path, source=source, score=score)
-            else:
-                raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        else:
-            df = process_dataset_TCR(df=df, source=source, score=score)
-        if not os.path.isdir(repository):
-            raise NotADirectoryError("please pass a path as a string to a local ImRex repository. To clone the "
-                                     "repository type: 'git clone https://github.com/pmoris/ImRex.git' in the terminal")
-        # prepare the test set to be suitable with ImRex
-        tmp_file = NamedTemporaryFile(delete=False)
-        test_set, mask = self.prepare_dataset_IMRex(df=df, filename=tmp_file.name)
-        if "down" in kwargs:
-            down = kwargs["down"]
-        else:
-            down = False
-        if down:
-            model = os.path.join(repository, 'models/pretrained/2020-07-24_19-18-39_trbmhcidown-shuffle-padded-b32-lre4'
-                                             '-reg001/2020-07-24_19-18-39_trbmhcidown-shuffle-padded-b32-lre4-reg001.h5')
-        else:
-            model = os.path.join(repository, 'models/pretrained/2020-07-30_11-30-27_trbmhci-shuffle-padded-b32-lre4-'
-                                             'reg001/2020-07-30_11-30-27_trbmhci-shuffle-padded-b32-lre4-reg001.h5')
-        script = os.path.join(repository, "src/scripts/predict/predict.py")
-        tmp_out = NamedTemporaryFile(delete=False)
-        cmd = f"python {script} --model {model} --input {tmp_file.name} --output {tmp_out.name}"
-        try:
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
-            stdo, stde = p.communicate()
-            stdr = p.returncode
-            if stdr > 0:
-                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
-            if os.path.getsize(tmp_out.name) == 0:
-                raise RuntimeError(
-                    "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
-                    stdo.decode())
-        except Exception as e:
-            raise RuntimeError(e)
-        os.remove(tmp_file.name)
-        result = self.parse_external_result(file=tmp_out.name, df=df)
-        tmp_out.close()
-        os.remove(tmp_out.name)
-        df_result = TCRSpecificityPredictionResult.from_dict(result,,
-        df_result.index = pd.MultiIndex.from_tuples(
-            [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
-            names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
-        if sum(mask) < df.shape[0]:
-            print(f"ImRex's trained model could not make predictions for some samples, which have either "
-                  f"cdr3-beta-seqs, that are not 10-20 aas long or epitopes, that are not 8-11 aas long. These samples "
-                  f"have prediction score of -1")
-        return df_result
-
-
-class NetTCR(AExternalTCRSpecificityPrediction, AExternal):
-    """
-    Implements NetTCR-2.0. "https://github.com/mnielLab/NetTCR-2.0"
-
-    """
-    __name = "NetTCR2"
-    __command = "python nettcr.py"
-    __version = "2.0"
+    def tcr_length(self):
+        return self.__trc_length
 
     @property
-    def version(self) -> str:
-        """
-        The version of the Method
-        """
-        return self.__version
-
-    @property
-    def command(self) -> str:
-        """
-        Defines the commandline call for external tool
-        """
-        return self.__command
-
-    @property
-    def name(self) -> str:
-        """The name of the predictor"""
-        return self.__name
-
-    @property
-    def supportedPeptides(self) -> list:
-        """
-        A list of valid Peptides
-        """
-        return []
-
-    def parse_external_result(self, file: str, df: pd.DataFrame):
-        """
-        Parses external results and returns the result
-        :param str file: The file path or the external prediction results
-        :param pd.DataFrame df: the complete processed dataframe
-        :return: A dictionary containing the prediction results
-        :rtype: dict{(str, str, str, str): float} {(Receptor_ID, TRA, TRB, Peptide): score}
-        """
-        outcome = pd.read_csv(file)
-        outcome.rename(columns={'prediction': 'Score', "CDR3b": "TRB", "peptide": "Peptide", "CDR3a": "TRA"},
-                       inplace=True)
-        result = df.loc[:, ["Receptor_ID", "TRA", "TRB", "Peptide"]]
-        result = result.merge(outcome, on=["TRA", "TRB", "Peptide"], how="left")
-        result.loc[:, "Score"] = result["Score"].map(lambda x: -1 if pd.isna(x) else x)
-        result["Score"].astype(float)
-        result.fillna("", inplace=True)
-        result["Receptor_ID"].astype(str)
-        return {self.name: {
-                            row[:4]: float("{:.4f}".format(row[4]))
-                            for row in result.itertuples(index=False)
-                           }
-               }
-
-    def get_external_version(self, path=None):
-        """
-        Returns the external version of the tool by executing
-        >{command} --version
-        might be dependent on the method and has to be overwritten
-        therefore it is declared abstract to enforce the user to
-        overwrite the method. The function in the base class can be called
-        with super()
-        :param str path: - Optional specification of executable path if deviant from self.__command
-        :return: The external version of the tool or None if tool does not support versioning
-        :rtype: str
-        """
-        return None
-
-    def predict(self, peptides, TCRs, repository: str, all: bool, **kwargs):
-        """
-        Overwrites ATCRSpecificityPrediction.predict
-
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide
-        :param peptides: The TCREpitope objects for which predictions should be performed
-        :type peptides: :class:`~epytope.Core.TCREpitope.TCREpitope` or list(:class:`~epytope.Core.TCREpitope.TCREpitope`)
-        :param TCRs: T cell receptor objects
-        :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
-        list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
-        :param str repository: a path to a local github repository of NetTCR predictor
-        :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
-        the prediction will be preformed in the same order of the passed peptides and TCRs objects
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
-        df = super().predict(peptides=peptides, TCRs=TCRs, repository=repository, all=all)
-        if "nettcr_chain" in kwargs:
-            nettcr_chain = kwargs["nettcr_chain"]
-            if nettcr_chain not in ["a", "b", "ab"]:
-                raise ValueError(f"nettcr_chain argument can only be set to one of the following values "
-                                 f"['a', 'b', 'ab']")
-        else:
-            nettcr_chain = "b"
-        df_result = self.predict_from_dataset(repository=repository, df=df, score=-1, nettcr_chain=nettcr_chain)
-        return df_result
-
-    def prepare_dataset_NetTCR(self, df: pd.DataFrame, filename: str = None, nettcr_chain: str = "b") -> \
-            Tuple[pd.DataFrame, pd.core.series.Series]:
-        """
-        process the dataset in the way to be suitable with NetTCR
-        :param df: a dataframe contains TRA, TRB seqs and corresponding epitopes to predict, if they bind or not
-        :param filename: str representing the name of the file to save the processed dataset
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :return: (pd.DataFrame, pd.core.series.Series), where the dataframe has all samples, which have
-        cdr3-(beta, alpha)-seqs shorter than 31 aas, and epitopes, which are shorter than 9 aas.
-        The function returns additionally series, which holds true values for the accepted samples, otherwise false
-        values.
-        :rtype pd.DataFrame, pd.core.series.Series
-        """
-
-        def is_aa_seq(seq):
-            seq = str(seq)
-            if len(seq) == 0:
-                return False
-            aas = set("ARNDCEQGHILKMFPSTWYV")
-            return all([i in aas for i in seq])
-
-        def replace(seq):
-            if not is_aa_seq(seq):
-                return ""
-            else:
-                return str(seq)
-        # NetTCR accepts only cdr3-alpha and cdr3-beta sequences, that are shorter than 30 aas and peptides, that are
-        # shorter than 9 aas. remove all observation, in which no cdr3 beta seq or peptide seq doesn't occur, or if it
-        # is not an amino acid sequence.
-        mask = (df["TRB"].str.len() <= 30) & (df["Peptide"].str.len() <= 9) & (df["TRA"].str.len() <= 30) & \
-               (df["TRB"].apply(is_aa_seq)) & (df["Peptide"].apply(is_aa_seq))
-        if nettcr_chain in ["a", "ab"]:
-            mask = mask & (df["TRA"].apply(is_aa_seq))
-        test_set = df.loc[mask, ]
-        # select only the required feature to run NetTCR
-        test_set = test_set[["TRA", "TRB", "Peptide"]]
-        """
-        # remove all observation, in which no cdr3 beta seq or peptide seq doesn't occur
-        test_set = test_set.loc[(test_set["TRB"].apply(is_aa_seq)) & (test_set["Peptide"].apply(is_aa_seq))]
-        test_set["TRA"] = test_set["TRA"].apply(replace)
-        """
-        # remove duplicates
-        # test_set.drop_duplicates(subset=["TRB", "Peptide"], keep='first', inplace=True, ignore_index=True)
-        # change column names according to https://github.com/mnielLab/NetTCR-2.0
-        test_set.columns = ["CDR3a", "CDR3b", "peptide"]
-
-        if filename:
-            test_set.to_csv(filename, index=False)
-        return test_set, mask
-
-    def predict_from_dataset(self, repository: str, path: str = None, df: pd.DataFrame = None, source: str = None,
-                             score: int = 1, **kwargs):
-        """
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide.
-        The path should lead to csv file with fixed column names dataset.columns = ['TRA', 'TRB', "TRAV", "TRAJ",
-        "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species", "Antigen.species", "Tissue"]. If some values for
-        one or more variables are unavailable, leave them as blank cells.
-        :param str repository: a path to a local github repository of NetTCR predictor
-        :param str path: a string representing a path to the dataset(csv file), which will be processed. Default value
-        is None, when the dataframe object is given
-        :param `pd.DataFrame` df: a dataframe object. Default value is None, when the path is given
-        :param str source: the source of the dataset [vdjdb, mcpas, scirpy, IEDB]. If this parameter is not passed,
-         the dataset should be a csv file with the column names mentioned above
-        :param int score: An integer representing a confidence score between 0 and 3 (0: critical information missing,
-        1: medium confidence, 2: high confidence, 3: very high confidence). By processing all entries with a confidence
-        score >= the passed parameter score will be kept. Default value is 1
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
-
-        if path is None and df is None:
-            raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        if df is None:
-            if os.path.isfile(path):
-                df = process_dataset_TCR(path=path, source=source, score=score)
-            else:
-                raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        else:
-            df = process_dataset_TCR(df=df, source=source, score=score)
-        if not os.path.isdir(repository):
-            raise NotADirectoryError("please pass a path as a string to a local NetTCR2 repository. To clone the "
-                                     "repository type: 'git clone https://github.com/mnielLab/NetTCR-2.0.git' in the "
-                                     "terminal")
-        if "nettcr_chain" in kwargs:
-            nettcr_chain = kwargs["nettcr_chain"]
-            if nettcr_chain not in ["a", "b", "ab"]:
-                raise ValueError(f"nettcr_chain argument can only be set to one of the following values "
-                                 f"['a', 'b', 'ab']")
-        else:
-            nettcr_chain = "b"
-        df.reset_index(drop=True, inplace=True)
-        # process dataframe in the way to be suitable with NetTCR's input
-        tmp_file = NamedTemporaryFile(delete=False)
-        _, mask = self.prepare_dataset_NetTCR(df, tmp_file.name, nettcr_chain=nettcr_chain)
-        tmp_out = NamedTemporaryFile(delete=False)
-        training_set = os.path.join(repository, "test", "sample_train.csv")
-        script = os.path.join(repository, "nettcr.py")
-        try:
-            cmd = f"python {script} --trainfile {training_set} --testfile {tmp_file.name} --chain {nettcr_chain} " \
-                  f"--outfile {tmp_out.name}"
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
-            stdo, stde = p.communicate()
-            stdr = p.returncode
-            if stdr > 0:
-                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
-            if os.path.getsize(tmp_out.name) == 0:
-                raise RuntimeError(
-                    "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
-                    stdo.decode())
-        except Exception as e:
-            raise RuntimeError(e)
-        os.remove(tmp_file.name)
-        result = self.parse_external_result(file=tmp_out.name, df=df)
-        tmp_out.close()
-        os.remove(tmp_out.name)
-        df_result = TCRSpecificityPredictionResult.from_dict(result,,
-        df_result.index = pd.MultiIndex.from_tuples(
-            [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
-            names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
-        if sum(mask) < df.shape[0]:
-            print(f"NetTCR-2's trained model could not make predictions for some samples, which have either "
-                  f"cdr3-(beta, alpha)-seqs, that are longer than 30 aas or epitopes, that are longer than 9 aas. These "
-                  f"samples, have prediction score of -1")
-        return df_result
-
-
-class pMTnet(AExternalTCRSpecificityPrediction, AExternal):
-    """
-    Implements pMTnet. "https://github.com/tianshilu/pMTnet"
-
-    """
-    __name = "pMTnet"
-    __command = "python main.py"
-    __version = " "
-
-    @property
-    def version(self) -> str:
-        """
-        The version of the Method
-        """
-        return self.__version
-
-    @property
-    def command(self) -> str:
-        """
-        Defines the commandline call for external tool
-        """
-        return self.__command
-
-    @property
-    def name(self) -> str:
-        """The name of the predictor"""
-        return self.__name
-
-    @property
-    def supportedPeptides(self) -> list:
-        """
-        A list of valid Peptides
-        """
-        return []
-
-    def parse_external_result(self, file: str, df: pd.DataFrame, output_log: str):
-        """
-        Parses external results and returns the result
-        :param str file: The file path or the external prediction results
-        :param pd.DataFrame df: the complete processed dataframe
-        :param str output_log: log file with CDR, Antigen, HLA information
-        :return: A dictionary containing the prediction results
-        :rtype: dict{(str, str, str, str): float} {(Receptor_ID, TRA, TRB, Peptide): score}
-        """
-        outcome = pd.read_csv(file)
-        #outcome.to_csv("/home/mahmoud/Documents/out.csv")
-        outcome.columns = ["TRB", "Peptide", "MHC", "Score"]
-        result = df.loc[:, ["Receptor_ID", "TRA", "TRB", "Peptide"]]
-        if result.shape[0] > outcome.shape[0]:
-            print(f"{result.loc[result['Peptide'].str.len() > 15].shape[0]} Antigens are longer than 15 aas, thus the "
-                  f"corresponding samples will have prediction score of -1. All samples with HLA, that is not in "
-                  f"HLA_seq_lib, will have score -1 too.")
-            print(open(output_log, "r").read())
-        result = result.merge(outcome.loc[:, ["TRB", "Peptide", "Score"]], on=["TRB", "Peptide"], how="left")
-        result.loc[:, "Score"] = result["Score"].map(lambda x: -1 if pd.isna(x) else x)
-        result["Score"].astype(float)
-        result.fillna("", inplace=True)
-        result["Receptor_ID"].astype(str)
-        return {self.name: {
-                            row[:4]: float("{:.4f}".format(row[4]))
-                            for row in result.itertuples(index=False)
-                           }
-               }
-
-    def get_external_version(self, path=None):
-        """
-        Returns the external version of the tool by executing
-        >{command} --version
-        might be dependent on the method and has to be overwritten
-        therefore it is declared abstract to enforce the user to
-        overwrite the method. The function in the base class can be called
-        with super()
-        :param str path: - Optional specification of executable path if deviant from self.__command
-        :return: The external version of the tool or None if tool does not support versioning
-        :rtype: str
-        """
-        return None
-
-    def predict(self, peptides, TCRs, repository: str, all: bool, **kwargs):
-        """
-        Overwrites ATCRSpecificityPrediction.predict
-
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide
-        :param peptides: The TCREpitope objects for which predictions should be performed
-        :type peptides: :class:`~epytope.Core.TCREpitope.TCREpitope` or list(:class:`~epytope.Core.TCREpitope.TCREpitope`)
-        :param TCRs: T cell receptor objects
-        :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
-        list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
-        :param str repository: a path to a local github repository of pMTnet predictor
-        :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
-        the prediction will be preformed in the same order of the passed peptides and TCRs objects
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
-        df = super().predict(peptides=peptides, TCRs=TCRs, repository=repository, all=all)
-        if "pMTnet_interpreter" in kwargs:
-            pMTnet_interpreter = kwargs["pMTnet_interpreter"]
-            if not os.path.exists(pMTnet_interpreter) or not os.path.basename(pMTnet_interpreter).startswith("python"):
-                raise FileNotFoundError("pass a path to python interpreter for pMTnet")
-        df_result = self.predict_from_dataset(repository=repository, df=df, score=-1,
-                                              pMTnet_interpreter=pMTnet_interpreter)
-        return df_result
-
-    def prepare_dataset(self, df: pd.DataFrame, filename: str = None) -> pd.DataFrame:
-        """
-        process the dataset in the way to be suitable with pMTnet
-        :param df: a dataframe contains TRA, TRB seqs and corresponding epitopes to predict, if they bind or not
-        :param filename: str representing the name of the file to save the processed dataset
-        :return: pd.DataFrame a dataframe, that has three columns (CDR3, Antigen, HLA)
-        :rtype pd.DataFrame
-        """
-
-        def getAllele(s):
-            candidate = ""
-            pattern = re.compile(r"(-)([\w\d*:.-]+)")
-            for _, allele in re.findall(pattern, s):
-                if '*' in allele:
-                    return allele
-                else:
-                    candidate = allele
-            if candidate != "":
-                return candidate
-            else:
-                return s
-
-        test_set = df.loc[:, ["TRB", "Peptide", "MHC"]]
-        test_set["MHC"] = test_set["MHC"].map(lambda x: getAllele(x))
-        # change column names according to https://github.com/tianshilu/pMTnet/blob/master/test/input/test_input.csv
-        test_set.columns = ["CDR3", "Antigen", "HLA"]
-        if filename:
-            test_set.to_csv(filename, index=False)
-        return test_set
-
-    def predict_from_dataset(self, repository: str, path: str = None, df: pd.DataFrame = None, source: str = None,
-                             score: int = 1, **kwargs):
-        """
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide.
-        The path should lead to csv file with fixed column names dataset.columns = ['TRA', 'TRB', "TRAV", "TRAJ",
-        "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species", "Antigen.species", "Tissue"]. If some values for
-        one or more variables are unavailable, leave them as blank cells.
-        :param str repository: a path to a local github repository of pMTnet predictor
-        :param str path: a string representing a path to the dataset(csv file), which will be processed. Default value
-        is None, when the dataframe object is given
-        :param `pd.DataFrame` df: a dataframe object. Default value is None, when the path is given
-        :param str source: the source of the dataset [vdjdb, mcpas, scirpy, IEDB]. If this parameter is not passed,
-         the dataset should be a csv file with the column names mentioned above
-        :param int score: An integer representing a confidence score between 0 and 3 (0: critical information missing,
-        1: medium confidence, 2: high confidence, 3: very high confidence). By processing all entries with a confidence
-        score >= the passed parameter score will be kept. Default value is 1
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
-
-        if path is None and df is None:
-            raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        if df is None:
-            if os.path.isfile(path):
-                df = process_dataset_TCR(path=path, source=source, score=score)
-            else:
-                raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        else:
-            df = process_dataset_TCR(df=df, source=source, score=score)
-        if not os.path.isdir(repository):
-            raise NotADirectoryError("please pass a path as a string to a local pMTnet repository. To clone the "
-                                     "repository type: 'git clone https://github.com/tianshilu/pMTnet.git' in the "
-                                     "terminal")
-        if "pMTnet_interpreter" in kwargs:
-            pMTnet_interpreter = kwargs["pMTnet_interpreter"]
-            if not os.path.exists(pMTnet_interpreter) or not os.path.basename(pMTnet_interpreter).startswith("python"):
-                raise FileNotFoundError("pass a path to python interpreter for pMTnet")
-        df.reset_index(drop=True, inplace=True)
-        # process dataframe in the way to be suitable with pMTnet's input
-        tmp_file = NamedTemporaryFile(delete=False)
-        library = os.path.join(repository, "library")
-        self.prepare_dataset(df, tmp_file.name)
-        tmp_dir = tempfile.TemporaryDirectory()
-        output_log = os.path.join(tmp_dir.name, "output.log")
-        script = os.path.join(repository, "pMTnet.py")
-        output = os.path.join(tmp_dir.name, "prediction.csv")
-        try:
-            cmd = f"{pMTnet_interpreter} {script} -input {tmp_file.name} -library {library} -output {tmp_dir.name} " \
-                  f"-output_log {output_log}"
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
-            stdo, stde = p.communicate()
-            stdr = p.returncode
-            if stdr > 0:
-                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
-            if os.path.getsize(output) == 0:
-                raise RuntimeError(
-                    "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
-                    stdo.decode())
-        except Exception as e:
-            raise RuntimeError(e)
-        tmp_file.close()
-        os.remove(tmp_file.name)
-        result = self.parse_external_result(file=output, df=df, output_log=output_log)
-        tmp_dir.cleanup()
-        df_result = TCRSpecificityPredictionResult.from_dict(result,,
-        df_result.index = pd.MultiIndex.from_tuples(
-            [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
-            names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
-        return df_result
-
-
-class ATM_TCR(AExternalTCRSpecificityPrediction, AExternal):
-    """
-    Implements ATM_TCR. "https://github.com/Lee-CBG/ATM-TCR"
-
-    """
-    __name = "ATM_TCR"
-    __command = "python main.py"
-    __version = " "
-
-    @property
-    def version(self) -> str:
-        """
-        The version of the Method
-        """
-        return self.__version
-
-    @property
-    def command(self) -> str:
-        """
-        Defines the commandline call for external tool
-        """
-        return self.__command
-
-    @property
-    def name(self) -> str:
-        """The name of the predictor"""
-        return self.__name
-
-    @property
-    def supportedPeptides(self) -> list:
-        """
-        A list of valid Peptides
-        """
-        return []
+    def epitope_length(self):
+        return self.__epitope_length
 
     def parse_external_result(self, file: str, df: pd.DataFrame, chain: str = "b"):
         """
@@ -1399,8 +682,8 @@ class ATM_TCR(AExternalTCRSpecificityPrediction, AExternal):
         process the dataset in the way to be suitable with ATM-TCR
         :param df: a dataframe contains at least TRB seqs and corresponding epitopes to predict, if they bind or not
         :param filename: str representing the name of the file to save the processed dataset
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a' 
-        for alpha- or 'b' for beta-sequences 
+        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
+        for alpha- or 'b' for beta-sequences
         :return: (pd.DataFrame, pd.core.series.Series), where the dataframe has all samples, which have cdr3-beta-seqs,
         that are shorter than 37 aas, and epitopes, which are not longer than 22 aas. The function returns additionally
         series, which holds true values for the accepted samples, otherwise false values.
@@ -1517,7 +800,7 @@ class ATM_TCR(AExternalTCRSpecificityPrediction, AExternal):
         os.remove(tmp_file.name)
         result = self.parse_external_result(file=output, df=df, chain=chain)
         os.remove(output)
-        df_result = TCRSpecificityPredictionResult.from_dict(result,,
+        df_result = TCRSpecificityPredictionResult.from_dict(result)
         df_result.index = pd.MultiIndex.from_tuples(
             [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
             names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
