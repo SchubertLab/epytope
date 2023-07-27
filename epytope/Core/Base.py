@@ -484,7 +484,7 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         df_tcrs["MHC"] = mhcs
         return df_tcrs
 
-    def input_check(self, tcrs, epitopes, pairwise):
+    def input_check(self, tcrs, epitopes, pairwise, **kwargs):
         """
         Checks whether TCR and Epitope information is provided in the right format.
         :param tcrs: the T cell receptors containing the sequence and gene information
@@ -496,7 +496,6 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         """
         from epytope.Core.ImmuneReceptor import TCellReceptor
         from epytope.Core.TCREpitope import TCREpitope
-
         for tcr in tcrs.receptors:
             if not isinstance(tcr, TCellReceptor):
                 raise ValueError(f"{tcr} is not of type TCRReceptor")
