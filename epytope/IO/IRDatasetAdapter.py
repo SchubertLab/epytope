@@ -25,11 +25,8 @@ from epytope.Core.Base import ATCRDatasetAdapter
 
 
 class IRDataset(metaclass=ABCMeta):
-    __name = "dataset"
-    __version = "0.0.0.1"
-
-    def __init__(self, receptors=None):
-        self.receptors = receptors
+    def __init__(self):
+        self.receptors = None
 
     def from_dataframe(self, df_irs, column_celltype="celltype", column_organism="organism",
                        prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
@@ -109,16 +106,6 @@ class IRDataset(metaclass=ABCMeta):
         df_irs = self.to_pandas(rename_columns)
         path_out = path_out if path_out.endswith('.csv') else f"{path_out}.csv"
         df_irs.to_csv(path_out)
-
-    @property
-    def name(self):
-        """ Name of the format used in this TCR-Dataset."""
-        return self.__name
-
-    @property
-    def version(self):
-        """ Version of the format used in this TCR-Dataset. """
-        return self.__name
 
 
 class MetaclassTCRAdapter(type):
@@ -465,3 +452,74 @@ class AIRRAdapter(ScirpyAdapter, IRDataset):
         import scirpy as ir
         adata = ir.io.read_airr(path)
         self.from_object(adata, **kwargs)
+
+
+class DfDataset(ATCRDatasetAdapter, IRDataset):
+    __name = "DataFrame"
+    __version = "0.0.0.1"
+
+    def __init__(self):
+        super().__init__()
+
+    def from_dataframe_by_prefix(self, df_irs, column_celltype="celltype", column_organism="organism",
+                              prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
+                              suffix_chain_type="chain_type", suffix_cdr3="cdr3",
+                              suffix_v_gene="v_gene", suffix_d_gene="d_gene", suffix_j_gene="j_gene"):
+        """
+        Creates a IR reperoite from a DataFrame by providing column names, prefixes for VJ / VDJ chain,
+        and suffixes for the chain information.
+        """
+        super(IRDataset).from_dataframe(df_irs, column_celltype, column_organism, prefix_vj_chain, prefix_vdj_chain,
+                                        suffix_chain_type, suffix_cdr3, suffix_v_gene, suffix_d_gene, suffix_j_gene)
+
+    def from_dataframe_by_columns(self, df_irs, column_celltype="celltype", column_organism="organism",
+                                 column_vj_chain_type="VJ_chain_type", column_vj_cdr3="VJ_cdr3",
+                                 column_vj_v_gene="VJ_v_gene", column_vj_j_gene="VJ_j_gene",
+                                 column_vdj_chain_type="VDJ_chain_type", column_vdj_cdr3="VDJ_cdr3",
+                                 column_vdj_v_gene="VDJ_v_gene", column_vdj_d_gene="VDJ_d_gene",
+                                 column_vdj_j_gene="VDJ_j_gene"):
+        """
+        Creates a IR repertoire from a DataFrame by indicating the column names
+        """
+        rename_dict = {
+            "celltype": column_celltype,
+            "organism": column_organism,
+            "VJ_chain_type": column_vj_chain_type,
+            "VJ_cdr3": column_vj_cdr3 ,
+            "VJ_v_gene": column_vj_v_gene,
+            "VJ_j_gene": column_vj_j_gene,
+            "VDJ_chain_type": column_vdj_chain_type,
+            "VDJ_cdr3": column_vdj_cdr3,
+            "VDJ_v_gene": column_vdj_v_gene,
+            "VDJ_d_gene": column_vdj_d_gene,
+            "VDJ_j_gene": column_vdj_j_gene
+        }
+        for k, v in rename_dict.items():
+            if v is None:
+                df_irs[k] = ""
+        df_irs = df_irs.rename(columns=dict((v, k) for k, v in rename_dict.items()))
+        super(IRDataset).from_dataframe(df_irs)
+
+    def from_path_by_prefix(self, path_csv, **kwargs):
+        """
+        Creates a IR repertoire from a csv file providing column names, prefixes for VJ and VDJ chain,
+        and suffixes for the chain information.
+        :param str path_csv: Location of the csv file containing the repertoire
+        :param kwargs: follows the definition of DfDataset.from_dataframe_by_prefix()
+        """
+        super(IRDataset).from_path(path_csv, **kwargs)
+
+    def from_path_by_columns(self, path_csv, **kwargs):
+        """
+        Creates a IR repertoire from a csv file providing the column names.
+        :param str path_csv: Location of the csv file containing the repertoire
+        :param kwargs: follows the definition of DfDataset.from_dataframe_by_prefix()
+        """
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
