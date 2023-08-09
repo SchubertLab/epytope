@@ -12,6 +12,7 @@ import os
 import re
 import warnings
 import pandas as pd
+import numpy as np
 
 from abc import ABCMeta, abstractmethod, ABC
 
@@ -24,11 +25,8 @@ from epytope.Core.Base import ATCRDatasetAdapter
 
 
 class IRDataset(metaclass=ABCMeta):
-    __name = "dataset"
-    __version = "0.0.0.1"
-
-    def __init__(self, receptors=None):
-        self.receptors = receptors
+    def __init__(self):
+        self.receptors = None
 
     def from_dataframe(self, df_irs, column_celltype="celltype", column_organism="organism",
                        prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
@@ -109,16 +107,6 @@ class IRDataset(metaclass=ABCMeta):
         path_out = path_out if path_out.endswith('.csv') else f"{path_out}.csv"
         df_irs.to_csv(path_out)
 
-    @property
-    def name(self):
-        """ Name of the format used in this TCR-Dataset."""
-        return self.__name
-
-    @property
-    def version(self):
-        """ Version of the format used in this TCR-Dataset. """
-        return self.__name
-
 
 class MetaclassTCRAdapter(type):
     def __init__(cls, name, bases, nmspc):
@@ -148,15 +136,21 @@ class IRDatasetAdapterFactory(metaclass=MetaclassTCRAdapter):
         return {k: sorted(versions.keys()) for k, versions in ATCRDatasetAdapter.registry.items()}
 
 
-"""
-class VDJdbAdapter(IRDataset):
-    def __init__(self):
-        super().__init__()
-        if source and source.lower() == "vdjdb":
-            if df is None:
-                df = pd.read_csv(path, sep='\t', low_memory=False)
-                pd.options.mode.chained_assignment = None
+class VDJdbAdapter(ATCRDatasetAdapter, IRDataset):
+    __name = "vdjdb"
+    __version = "2023.06.01"
 
+    def __init__(self):
+        """
+        Extract TCR information from the VDJdb database format:
+        https://vdjdb.cdr3.net/
+        Please download the database or related subset.
+        """
+        super().__init__()
+        self.epitopes = None
+
+    def from_path(self, path_csv, **kwargs):
+        """
             # select only the columns mentioned in the description above
             df = df[["meta.clone.id", "cdr3.alpha", "cdr3.beta", "v.alpha", "j.alpha", "v.beta", "j.beta",
                      "meta.cell.subset", "antigen.epitope", "mhc.a", "species", "antigen.species", "meta.tissue"]]
@@ -170,7 +164,59 @@ class VDJdbAdapter(IRDataset):
             # get only gene allele annotation form family name of v, j regions respectively
             df[["TRAV", "TRAJ", "TRBV", "TRBJ"]] = df[["TRAV", "TRAJ", "TRBV", "TRBJ"]].apply(substring)
             return process(df)
-"""
+        """
+        df_irs = pd.read_csv(path_csv, sep="\t")
+        max_index = df_irs["complex.id"].max() + 1
+        n_unpaired = sum(df_irs["complex.id"] == 0)
+        df_irs.loc[df_irs["complex.id"] == 0, "complex.id"] = list(range(max_index, max_index + n_unpaired))
+
+        dfs = {"TRA": df_irs[df_irs["Gene"] == "TRA"].copy(),
+               "TRB": df_irs[df_irs["Gene"] == "TRB"].copy()}
+        for name, df in dfs.items():
+            dfs[name].index = dfs[name]["complex.id"]
+            dfs[name] = dfs[name][["Gene", "CDR3", "V", "J", "Epitope", "Species"]]
+            dfs[name].columns = [f"{name} {col}" for col in dfs[name].columns]
+        df_irs = dfs["TRA"].join(dfs["TRB"], how="outer")
+
+        for col in ["Epitope", "Species"]:
+            df_irs[col] = df_irs.apply(lambda x: x[f"TRA {col}"] if not x[f"TRA {col}"] != np.nan else x[f"TRB {col}"],
+                                       axis=1)
+
+        rename_dict = {
+            "column_organism": "Species",
+            "prefix_vj_chain": "TRA ",
+            "prefix_vdj_chain": "TRB ",
+            "suffix_chain_type": "Gene",
+            "suffix_cdr3": "CDR3",
+            "suffix_v_gene": "V",
+            "suffix_d_gene": "D",
+            "suffix_j_gene": "J"
+        }
+
+        df_irs["TRB D"] = None
+        df_irs["celltype"] = "T cell"
+
+        df_irs = df_irs.fillna("")
+        df_irs = df_irs.replace("nan", "")
+
+        df_irs.drop_duplicates(keep="first", inplace=True)
+        df_irs = df_irs[(df_irs["TRA CDR3"] != "") | (df_irs["TRB CDR3"] != "")]
+        df_irs = df_irs[df_irs["TRA CDR3"].isna() | df_irs["TRB CDR3"]]
+
+        self.save_eptiopes(df_irs)
+        self.from_dataframe(df_irs, **rename_dict)
+
+    def save_eptiopes(self, df_epitopes):
+        epitopes = [TCREpitope(peptide=Peptide(ep)) for ep in df_epitopes["Epitope"]]
+        self.epitopes = epitopes
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
 
 
 class IEDBAdapter(ATCRDatasetAdapter, IRDataset):
@@ -179,7 +225,7 @@ class IEDBAdapter(ATCRDatasetAdapter, IRDataset):
 
     def __init__(self):
         """
-        Extract TCR information from the IEDB Recetpor-Eptiope database-Format:
+        Extract TCR information from the IEDB Recetpor-Eptiope database format:
         https://www.iedb.org/
         Please download the database or related subset.
         """
@@ -222,7 +268,7 @@ class IEDBAdapter(ATCRDatasetAdapter, IRDataset):
         for col in ["Calculated Chain 1 CDR3", "Calculated Chain 2 CDR3", "Description"]:
             df_irs = df_irs[df_irs[col].str.match("^[ACDEFGHIKLMNPQRSTVWY]*$")]
 
-        df_irs.drop_duplicates(keep='first', inplace=True)
+        df_irs.drop_duplicates(keep="first", inplace=True)
         df_irs = df_irs[(df_irs["Calculated Chain 1 CDR3"] != "") | (df_irs["Calculated Chain 2 CDR3"] != "")]
         df_irs = df_irs[df_irs["Calculated Chain 1 CDR3"].isna() | df_irs["Calculated Chain 2 CDR3"]]
 
@@ -284,7 +330,7 @@ class McPasAdapter(ATCRDatasetAdapter, IRDataset):
         for col in ["TRACDR3", "TRBCDR3", "Epitope.peptide"]:
             df_irs = df_irs[df_irs[col].str.match("^[ACDEFGHIKLMNPQRSTVWY]*$")]
 
-        df_irs.drop_duplicates(keep='first', inplace=True)
+        df_irs.drop_duplicates(keep="first", inplace=True)
         df_irs = df_irs[(df_irs["TRACDR3"] != "") | (df_irs["TRBCDR3"] != "")]
         df_irs = df_irs[df_irs["TRACDR3"].isna() | df_irs["TRBCDR3"]]
 
@@ -366,7 +412,7 @@ class ScirpyAdapter(ATCRDatasetAdapter, IRDataset):
                 required_columns.append(f"{chain}{entry}")
         df_irs = df_irs[required_columns].copy()
 
-        df_irs.drop_duplicates(inplace=True)
+        df_irs.drop_duplicates(keep="first", inplace=True)
         df_irs.reset_index(drop=True, inplace=True)
 
         # Fill missing values
@@ -406,3 +452,74 @@ class AIRRAdapter(ScirpyAdapter, IRDataset):
         import scirpy as ir
         adata = ir.io.read_airr(path)
         self.from_object(adata, **kwargs)
+
+
+class DfDataset(ATCRDatasetAdapter, IRDataset):
+    __name = "DataFrame"
+    __version = "0.0.0.1"
+
+    def __init__(self):
+        super().__init__()
+
+    def from_dataframe_by_prefix(self, df_irs, column_celltype="celltype", column_organism="organism",
+                              prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
+                              suffix_chain_type="chain_type", suffix_cdr3="cdr3",
+                              suffix_v_gene="v_gene", suffix_d_gene="d_gene", suffix_j_gene="j_gene"):
+        """
+        Creates a IR reperoite from a DataFrame by providing column names, prefixes for VJ / VDJ chain,
+        and suffixes for the chain information.
+        """
+        super(IRDataset).from_dataframe(df_irs, column_celltype, column_organism, prefix_vj_chain, prefix_vdj_chain,
+                                        suffix_chain_type, suffix_cdr3, suffix_v_gene, suffix_d_gene, suffix_j_gene)
+
+    def from_dataframe_by_columns(self, df_irs, column_celltype="celltype", column_organism="organism",
+                                 column_vj_chain_type="VJ_chain_type", column_vj_cdr3="VJ_cdr3",
+                                 column_vj_v_gene="VJ_v_gene", column_vj_j_gene="VJ_j_gene",
+                                 column_vdj_chain_type="VDJ_chain_type", column_vdj_cdr3="VDJ_cdr3",
+                                 column_vdj_v_gene="VDJ_v_gene", column_vdj_d_gene="VDJ_d_gene",
+                                 column_vdj_j_gene="VDJ_j_gene"):
+        """
+        Creates a IR repertoire from a DataFrame by indicating the column names
+        """
+        rename_dict = {
+            "celltype": column_celltype,
+            "organism": column_organism,
+            "VJ_chain_type": column_vj_chain_type,
+            "VJ_cdr3": column_vj_cdr3 ,
+            "VJ_v_gene": column_vj_v_gene,
+            "VJ_j_gene": column_vj_j_gene,
+            "VDJ_chain_type": column_vdj_chain_type,
+            "VDJ_cdr3": column_vdj_cdr3,
+            "VDJ_v_gene": column_vdj_v_gene,
+            "VDJ_d_gene": column_vdj_d_gene,
+            "VDJ_j_gene": column_vdj_j_gene
+        }
+        for k, v in rename_dict.items():
+            if v is None:
+                df_irs[k] = ""
+        df_irs = df_irs.rename(columns=dict((v, k) for k, v in rename_dict.items()))
+        super(IRDataset).from_dataframe(df_irs)
+
+    def from_path_by_prefix(self, path_csv, **kwargs):
+        """
+        Creates a IR repertoire from a csv file providing column names, prefixes for VJ and VDJ chain,
+        and suffixes for the chain information.
+        :param str path_csv: Location of the csv file containing the repertoire
+        :param kwargs: follows the definition of DfDataset.from_dataframe_by_prefix()
+        """
+        super(IRDataset).from_path(path_csv, **kwargs)
+
+    def from_path_by_columns(self, path_csv, **kwargs):
+        """
+        Creates a IR repertoire from a csv file providing the column names.
+        :param str path_csv: Location of the csv file containing the repertoire
+        :param kwargs: follows the definition of DfDataset.from_dataframe_by_prefix()
+        """
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
