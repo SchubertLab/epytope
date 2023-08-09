@@ -146,21 +146,6 @@ class VDJdbAdapter(ATCRDatasetAdapter, IRDataset):
         self.epitopes = None
 
     def from_path(self, path_csv, **kwargs):
-        """
-            # select only the columns mentioned in the description above
-            df = df[["meta.clone.id", "cdr3.alpha", "cdr3.beta", "v.alpha", "j.alpha", "v.beta", "j.beta",
-                     "meta.cell.subset", "antigen.epitope", "mhc.a", "species", "antigen.species", "meta.tissue"]]
-            # rename the selected columns
-            df.columns = ["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC",
-                          "Species",
-                          "Antigen.species", "Tissue"]
-            # replace not available values with empty cells
-            df = df.fillna('')
-            df.loc[:, "T-Cell-Type"] = df["T-Cell-Type"].apply(lambda x: x[:3])
-            # get only gene allele annotation form family name of v, j regions respectively
-            df[["TRAV", "TRAJ", "TRBV", "TRBJ"]] = df[["TRAV", "TRAJ", "TRBV", "TRBJ"]].apply(substring)
-            return process(df)
-        """
         df_irs = pd.read_csv(path_csv, sep="\t")
         max_index = df_irs["complex.id"].max() + 1
         n_unpaired = sum(df_irs["complex.id"] == 0)
