@@ -7,14 +7,10 @@
 .. moduleauthor:: albahah, drost
 
 """
-
-import os
-import re
-import warnings
 import pandas as pd
 import numpy as np
 
-from abc import ABCMeta, abstractmethod, ABC
+from abc import ABCMeta
 
 from epytope.Core.Peptide import Peptide
 from epytope.Core.TCREpitope import TCREpitope
@@ -119,7 +115,7 @@ class MetaclassTCRAdapter(type):
         """
         try:
             return ATCRDatasetAdapter[str(source).lower(), None]()
-        except KeyError as e:
+        except KeyError:
             raise ValueError(f"Predictor {source} is not known. Please verify that such an Predictor is " +
                              "supported by epytope and inherits ATCRDatasetAdapter")
 
@@ -462,9 +458,9 @@ class DfDataset(ATCRDatasetAdapter, IRDataset):
         super().__init__()
 
     def from_dataframe_by_prefix(self, df_irs, column_celltype="celltype", column_organism="organism",
-                              prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
-                              suffix_chain_type="chain_type", suffix_cdr3="cdr3",
-                              suffix_v_gene="v_gene", suffix_d_gene="d_gene", suffix_j_gene="j_gene"):
+                                 prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
+                                 suffix_chain_type="chain_type", suffix_cdr3="cdr3",
+                                 suffix_v_gene="v_gene", suffix_d_gene="d_gene", suffix_j_gene="j_gene"):
         """
         Creates a IR reperoite from a DataFrame by providing column names, prefixes for VJ / VDJ chain,
         and suffixes for the chain information.
@@ -473,11 +469,11 @@ class DfDataset(ATCRDatasetAdapter, IRDataset):
                                         suffix_chain_type, suffix_cdr3, suffix_v_gene, suffix_d_gene, suffix_j_gene)
 
     def from_dataframe_by_columns(self, df_irs, column_celltype="celltype", column_organism="organism",
-                                 column_vj_chain_type="VJ_chain_type", column_vj_cdr3="VJ_cdr3",
-                                 column_vj_v_gene="VJ_v_gene", column_vj_j_gene="VJ_j_gene",
-                                 column_vdj_chain_type="VDJ_chain_type", column_vdj_cdr3="VDJ_cdr3",
-                                 column_vdj_v_gene="VDJ_v_gene", column_vdj_d_gene="VDJ_d_gene",
-                                 column_vdj_j_gene="VDJ_j_gene"):
+                                  column_vj_chain_type="VJ_chain_type", column_vj_cdr3="VJ_cdr3",
+                                  column_vj_v_gene="VJ_v_gene", column_vj_j_gene="VJ_j_gene",
+                                  column_vdj_chain_type="VDJ_chain_type", column_vdj_cdr3="VDJ_cdr3",
+                                  column_vdj_v_gene="VDJ_v_gene", column_vdj_d_gene="VDJ_d_gene",
+                                  column_vdj_j_gene="VDJ_j_gene"):
         """
         Creates a IR repertoire from a DataFrame by indicating the column names
         """
@@ -485,7 +481,7 @@ class DfDataset(ATCRDatasetAdapter, IRDataset):
             "celltype": column_celltype,
             "organism": column_organism,
             "VJ_chain_type": column_vj_chain_type,
-            "VJ_cdr3": column_vj_cdr3 ,
+            "VJ_cdr3": column_vj_cdr3,
             "VJ_v_gene": column_vj_v_gene,
             "VJ_j_gene": column_vj_j_gene,
             "VDJ_chain_type": column_vdj_chain_type,
