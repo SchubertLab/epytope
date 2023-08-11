@@ -126,6 +126,28 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
 
     def format_results(self, filenames, tcrs, pairwise):
         raise NotImplementedError
+    
+    def transform_output(self, result_df, tcrs, pairwise, joining_list, method=None):
+        if not pairwise:
+            df_tcrs = tcrs.to_pandas()
+            df_out = df_tcrs.merge(result_df, on=joining_list, how="left")
+            tuples = [('TCR', el) for el in df_tcrs.columns]
+            tuples.extend([("Epitope", "Peptide"), ("Epitope", "MHC"), ("Method", method)])
+            df_out.columns = pd.MultiIndex.from_tuples(tuples)
+        else:
+            df_out = tcrs.to_pandas()
+            epitopes = result_df[["Peptide", "MHC"]].drop_duplicates()
+            epitopes = [TCREpitope(row["Peptide"], row["MHC"]) for i, row in epitopes.iterrows()]
+            tuples = [('TCR', el) for el in df_out.columns]
+            for epitope in epitopes:
+                df_tmp = result_df[(result_df["Peptide"] == epitope.peptide) &
+                                    (result_df["MHC"].astype(str) == (epitope.allele if epitope.allele
+                                                                                        else ""))].copy()
+                tuples.extend([(str(epitope), method)])
+                df_out = df_out.merge(df_tmp, on=joining_list, how="left")
+                df_out = df_out.drop(columns=["MHC", "Peptide"])
+            df_out.columns = pd.MultiIndex.from_tuples(tuples)
+        return df_out
 
     def clean_up(self, tmp_folder, files=None):
         """
