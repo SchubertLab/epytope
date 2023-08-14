@@ -227,8 +227,8 @@ class pMTnet(ARepoTCRSpecificityPrediction):
         df_tcrs["HLA"] = df_tcrs["HLA"].astype(str).str[4:]
         return df_tcrs
 
-    def save_tmp_files(self, data):
-        filenames, tmp_dir = super().save_tmp_files(data)
+    def save_tmp_files(self, data, **kwargs):
+        filenames, tmp_dir = super().save_tmp_files(data, **kwargs)
         filenames[1] = os.sep.join(filenames[1].split(os.sep)[:-1])
         filenames.append(f"{tmp_dir.name}/{self.name}_logs.log")
         return filenames, tmp_dir
@@ -289,24 +289,30 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs["Binding Affinity"] = 1
-        df_tcrs = df_tcrs[["Epitope", "TCR", "Binding Affinity", "MHC"]]
+        df_tcrs = df_tcrs[["Epitope", "TCR", "Binding Affinity"]]
         df_tcrs = self.filter_by_length(df_tcrs, None, "TCR", "Epitope")
         df_tcrs = df_tcrs[(~df_tcrs["TCR"].isna()) & (df_tcrs["TCR"] != "")]
         return df_tcrs
 
-    def save_tmp_files(self, data):
-        filenames, tmp_dir = super().save_tmp_files(data)
-        filenames.append(f"{tmp_dir.name}/{self.name}_logs.log")
-        return filenames, tmp_dir
+    def save_tmp_files(self, data, **kwargs):
+        paths, tmp_folder = super().save_tmp_files(data)
+        paths[1] = os.path.join(kwargs["repository"], "result", "pred_original_ATM-TCR_input.csv")
+        data.to_csv(paths[0], header=False, index=False)
+        return paths, tmp_folder
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        import tensorflow as tf
-        cuda = tf.test.is_gpu_available(cuda_only=True)
-        cmd = f"main.py --infile data/combined_dataset.csv --indepfile {filenames[1]} --mode test --cuda {cuda}"
+        if "cuda" in kwargs:
+            cuda = kwargs["cuda"]
+        else:
+            import tensorflow as tf
+            cuda = tf.test.is_gpu_available(cuda_only=True)
+        cmd = f"main.py --infile data/combined_dataset.csv --indepfile {filenames[0]} --mode test --cuda {cuda}"
         return cmd
 
     def format_results(self, filenames, tcrs, pairwise):
-        results_predictor = pd.read_csv(filenames[1])
+        results_predictor = pd.read_csv(filenames[1], sep="\t", header=None)
+        results_predictor.columns = ["Peptide", "CDR3", "Label", "Binary", "Score"]
+        results_predictor["MHC"] = ""
         df_out = TCRSpecificityPredictionResult.from_output(results_predictor, tcrs, pairwise, self.name)
         return df_out
 
@@ -333,24 +339,3 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
                             for row in result.itertuples(index=False)
                            }
                }
-
-    def prepare_dataset(self, df: pd.DataFrame, filename: str = None, chain: str = "b"):
-        """
-        process the dataset in the way to be suitable with ATM-TCR
-        :param df: a dataframe contains at least TRB seqs and corresponding epitopes to predict, if they bind or not
-        :param filename: str representing the name of the file to save the processed dataset
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences
-        :return: (pd.DataFrame, pd.core.series.Series), where the dataframe has all samples, which have cdr3-beta-seqs,
-        that are shorter than 37 aas, and epitopes, which are not longer than 22 aas. The function returns additionally
-        series, which holds true values for the accepted samples, otherwise false values.
-        :rtype pd.DataFrame, pd.core.series.Series
-        """
-        cmd = f"python main.py --infile {infile} --indepfile {tmp_file.name} --mode test --cuda {cuda}"
-        os.remove(tmp_file.name)
-        result = self.parse_external_result(file=output, df=df, chain=chain)
-        os.remove(output)
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
-        df_result.index = pd.MultiIndex.from_tuples(
-            [tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
-            names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])

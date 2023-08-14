@@ -8,21 +8,17 @@
 .. moduleauthor:: albahah, drost
 """
 
-import abc
 import os
 import subprocess
 import tempfile
-import numpy as np
 import pandas as pd
+import numpy as np
 from epytope.Core.Base import ATCRSpecificityPrediction
 from epytope.Core.TCREpitope import TCREpitope
 from epytope.Core.ImmuneReceptor import ImmuneReceptor
 from epytope.IO.IRDatasetAdapter import IRDataset
 from epytope.Core.Result import TCRSpecificityPredictionResult
 import re
-# from pytoda.proteins.utils import aas_to_smiles
-from pathlib import Path
-from typing import Tuple
 
 
 class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
@@ -62,7 +58,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
 
         self.input_check(tcrs, epitopes, pairwise, **kwargs)
         data = self.format_tcr_data(tcrs, epitopes, pairwise)
-        filenames, tmp_folder = self.save_tmp_files(data)
+        filenames, tmp_folder = self.save_tmp_files(data, **kwargs)
         cmd = self.get_base_cmd(filenames, tmp_folder, interpreter, conda, cmd_prefix, **kwargs)
         self.run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, **kwargs)
         df_results = self.format_results(filenames, tcrs, pairwise)
@@ -72,7 +68,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
     def format_tcr_data(self, tcrs, epitopes, pairwise):
         raise NotImplementedError
 
-    def save_tmp_files(self, data):
+    def save_tmp_files(self, data, **kwargs):
         """
         Saves a pd.DataFrame to a temporary directory.
         :param pd.DataFrame data: Data frame containing tcr and epitope data
@@ -121,7 +117,11 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
             cmds.append(cmd_prefix)
         if conda is not None:
             cmds.append(f"conda activate {conda}")
-        cmds.append(f"{interpreter} -m {cmd}")
+        if "m_cmd" in kwargs and not kwargs["m_cmd"]:
+            cmds.append(f"{interpreter} {cmd}")
+        else:
+            cmds.append(f"{interpreter} -m {cmd}")
+
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
     def format_results(self, filenames, tcrs, pairwise):
@@ -155,7 +155,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         """
         print(cmd)
         try:
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, #PIPE,
+            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,  # PIPE,
                                  stderr=subprocess.STDOUT)
             stdo, stde = p.communicate()
             stdr = p.returncode
@@ -179,7 +179,6 @@ class ImRex(ACmdTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (10, 20)
     __epitope_length = (8, 11)
-    __cmd = "todo"  #todo
 
     @property
     def version(self):
@@ -197,10 +196,6 @@ class ImRex(ACmdTCRSpecificityPrediction):
     def epitope_length(self):
         return self.__epitope_length
 
-    @property
-    def cmd(self):
-        return self.__cmd
-
     def format_tcr_data(self, tcrs, epitopes, pairwise):
         rename_columns = {
             "VDJ_cdr3": "cdr3",
@@ -217,7 +212,7 @@ class ImRex(ACmdTCRSpecificityPrediction):
         df_tcrs = df_tcrs[(~df_tcrs["cdr3"].isna()) & (df_tcrs["cdr3"] != "")]
         return df_tcrs
 
-    def save_tmp_files(self, data):
+    def save_tmp_files(self, data, **kwargs):
         tmp_folder = self.get_tmp_folder_path()
         path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
         path_out = os.path.join(tmp_folder.name, f"{self.name}_output.csv")
@@ -247,12 +242,15 @@ class ImRex(ACmdTCRSpecificityPrediction):
 
 class TITAN(ACmdTCRSpecificityPrediction):
     """
-    Implements Tcr epITope bimodal Attention Networks (TITAN). The provided trained model can be downloaded from
-
+    Author: Weber et al.
+    Paper: https://doi.org/10.1093/bioinformatics/btab294
+    Repo: https://github.com/PaccMann/TITAN
     """
     __name = "TITAN"
     __command = "python scripts/flexible_model_eval.py"
-    __version = " "
+    __version = "1.0.0"
+    __tcr_length = (0, 40)  # TODO
+    __epitope_length = (0, 40)  # TODO
     _v_regions = ['TRBV1*01', 'TRBV10-1*01', 'TRBV10-1*02', 'TRBV10-2*01', 'TRBV10-2*02', 'TRBV10-3*01', 'TRBV10-3*02',
                   'TRBV10-3*03', 'TRBV10-3*04', 'TRBV11-1*01', 'TRBV11-2*01', 'TRBV11-2*02', 'TRBV11-2*03',
                   'TRBV11-3*01', 'TRBV11-3*02', 'TRBV11-3*03', 'TRBV11-3*04', 'TRBV12-1*01', 'TRBV12-2*01',
@@ -280,290 +278,132 @@ class TITAN(ACmdTCRSpecificityPrediction):
                   'TRBJ2-7*01', 'TRBJ2-7*02']
 
     @property
-    def version(self) -> str:
-        """
-        The version of the Method
-        """
+    def version(self):
         return self.__version
 
     @property
-    def command(self) -> str:
-        """
-        Defines the commandline call for external tool
-        """
-        return self.__command
-
-    @property
-    def name(self) -> str:
-        """The name of the predictor"""
+    def name(self):
         return self.__name
 
     @property
-    def supportedPeptides(self) -> list:
-        """
-        A list of valid Peptides
-        """
-        return []
+    def tcr_length(self):
+        return self.__tcr_length
 
-    def parse_external_result(self, file: str, df: pd.DataFrame):
-        """
-        Parses external results and returns the result
-        :param str file: The file path or the external prediction results
-        :param pd.DataFrame df: the complete processed dataframe
-        :return: A dictionary containing the prediction results
-        :rtype: dict{(str, str, str, str): float} {(Receptor_ID, TRA, TRB, Peptide): score}
-        """
-        result = df.loc[:, ["Receptor_ID", "TRA", "TRB", "Peptide"]]
-        mask = (df["TRBV"].isin(self._v_regions)) & (df["TRBJ"].isin(self._j_regions))
-        result.loc[:, "Score"] = -1
-        if df.shape[0] == 1:
-            result["Score"] = np.load((file + ".npy"))[0][0]
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        df_tcrs = tcrs.to_pandas()
+        df_tcrs["VDJ_v_gene"] = df_tcrs["VDJ_v_gene"].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
+        df_tcrs["VDJ_j_gene"] = df_tcrs["VDJ_j_gene"].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
+        df_tcrs = df_tcrs[df_tcrs["VDJ_v_gene"].isin(self._v_regions) & df_tcrs["VDJ_j_gene"].isin(self._j_regions)]
+        df_tcrs = df_tcrs[(~df_tcrs["VDJ_cdr3"].isna()) & (df_tcrs["VDJ_cdr3"] != "")]
+
+        df_tcrs_unique = df_tcrs.drop_duplicates().copy()
+        df_tcrs_unique["sequence_id"] = df_tcrs_unique.index
+        df_tcrs_unique = df_tcrs_unique[["sequence_id", "VDJ_v_gene", "VDJ_j_gene", "VDJ_cdr3"]]
+        tcr_2_id = {",".join(row[1][["VDJ_v_gene", "VDJ_j_gene", "VDJ_cdr3"]]): row[1]["sequence_id"]
+                    for row in df_tcrs_unique.iterrows()}
+
+        df_epitopes = pd.DataFrame({"ligand": [epitope.peptide.__str__() for epitope in epitopes]})
+        df_epitopes_unique = df_epitopes.drop_duplicates().copy()
+        df_epitopes_unique["ligand_id"] = df_epitopes_unique.index
+        df_epitopes_unique = df_epitopes_unique[["ligand", "ligand_id"]]
+        epitope_2_id = {row[1]["ligand"]: row[1]["ligand_id"] for row in df_epitopes_unique.iterrows()}
+
+        if pairwise:
+            df_matchup = [pd.DataFrame({"sequence_id": df_epitopes_unique["sequence_id"], "ligand_name": ligand})
+                          for ligand in df_epitopes_unique["ligand_name"]]
+            df_matchup = pd.concat(df_matchup)
         else:
-            result.loc[mask, "Score"] = np.load((file + ".npy"))[0]
-        result["Score"].astype(float)
-        result.fillna("", inplace=True)
-        result["Receptor_ID"].astype(str)
-        return {self.name: {
-                            row[:4]: float("{:.4f}".format(row[4]))
-                            for row in result.itertuples(index=False)
-                           }
-               }
+            df_matchup = pd.DataFrame()
+            df_matchup["sequence_id"] = df_tcrs.apply(lambda row:
+                                                      tcr_2_id[",".join(row[["VDJ_v_gene", "VDJ_j_gene", "VDJ_cdr3"]])],
+                                                      axis=1)
+            df_matchup["ligand_name"] = df_epitopes["ligand"].map(epitope_2_id)
+        df_matchup = df_matchup.drop_duplicates()
+        df_matchup["label"] = 1
 
-    def get_external_version(self, path=None):
-        """
-        Returns the external version of the tool by executing
-        >{command} --version
-        might be dependent on the method and has to be overwritten
-        therefore it is declared abstract to enforce the user to
-        overwrite the method. The function in the base class can be called
-        with super()
-        :param str path: - Optional specification of executable path if deviant from self.__command
-        :return: The external version of the tool or None if tool does not support versioning
-        :rtype: str
-        """
-        return None
+        # TITAN skips the last batch if it is incomplete To have predictions for all tcrs we need to fill dummy values
+        batch_size = 128
+        n_fill = 128 - len(df_matchup) % batch_size
+        if n_fill != batch_size:
+            df_fill = pd.concat([df_matchup[-1:]] * n_fill)
+            df_matchup = pd.concat([df_matchup, df_fill])
+        df_matchup = df_matchup.reset_index()
+        df_matchup.loc[0, "label"] = 0
+        return [df_tcrs_unique, df_epitopes_unique, df_matchup]
 
-    def get_TRB_full_seq(self, df: pd.DataFrame,
-                         directory: str = "/home/mahmoud/Documents/BA/LetzerVersuch/epytope/data",
-                         v_seg_header: str = "TRBV",
-                         j_seg_header: str = "TRBJ",
-                         cdr3_header: str = "TRB",
-                         titan_interpreter: str = "python",
-                         local_titan_repository: str = "/home/mahmoud/Documents/BA/TITAN/TITAN") \
-            -> Tuple[pd.DataFrame, pd.core.series.Series]:
-        """
-        get the full CDR3 sequence give the CDR3 sequence and its corresponding V, J segments
-        :param directory: Directory containing V_segment_sequences.fasta and J_segment_sequences.fasta files downloaded from
-         IMGT (https://imgt.org/vquest/refseqh.html#refdir)
-        :param df: a dataframe containing CDR3 info, V and J segment names
-        :param v_seg_header: a string representing the header for column containing V segments
-        :param j_seg_header: a string representing the header for column containing J segments
-        :param cdr3_header: a string representing the header for column containing CDR3 beta sequence
-        :param titan_interpreter: a string representing a path to a python interpreter under the virtual environment of
-        TITAN
-        :param local_titan_repository: a string representing a path to a local TITAN's repository
-        :return: (pd.DataFrame, pd.core.series.Series), where the dataframe has all samples, which their v- and j-regions
-        are includes in the human v- and in j-regions given by IMGT. The function returns additionally series, which
-        holds true values for the accepted samples, otherwise false values.
-        :rtype pd.DataFrame, pd.core.series.Series
-        """
-        output = os.path.join(directory, f"full_{cdr3_header}_seq.csv")
-        input_ = os.path.join(directory, "input.csv")
-        # reformat V- and J-region to match the IMGT gene and allele name
-        df[v_seg_header] = df[v_seg_header].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
-        df[j_seg_header] = df[j_seg_header].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
-        # exclude all samples, their v- or j-regions of the beta-sequences are not included in human v- or j-regions
-        # given by IMGT
-        mask = (df["TRBV"].isin(self._v_regions)) & (df["TRBJ"].isin(self._j_regions))
-        accepted_samples = df.loc[mask, ]
-        excluded_samples = df.loc[~mask, ]
-        accepted_samples.to_csv(input_, index=False)
-        cmd = f"{titan_interpreter} {os.path.join(local_titan_repository, 'scripts/cdr3_to_full_seq.py')} {directory} " \
-              f"{input_} {v_seg_header} {j_seg_header} {cdr3_header} {output}"
-        try:
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
-            stdo, stde = p.communicate()
-            stdr = p.returncode
-            if stdr > 0:
-                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
-            if os.path.getsize(output) == 0:
-                raise RuntimeError(
-                    "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
-                    stdo.decode())
-        except Exception as e:
-            raise RuntimeError(e)
-        os.remove(input_)
-        df_full_seq = pd.read_csv(output).iloc[:, 1:]
-        os.remove(output)
-        return df_full_seq, mask
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        path_tcrs = os.path.join(tmp_folder.name, f"{self.name}_raw_tcrs.csv")
+        path_tcrs_full = os.path.join(tmp_folder.name, f"{self.name}_input_tcrs.csv")
+        path_epitopes = os.path.join(tmp_folder.name, f"{self.name}_raw_epitopes.csv")
+        path_epitopes_smi = os.path.join(tmp_folder.name, f"{self.name}_input_epitopes.smi")
+        path_test = os.path.join(tmp_folder.name, f"{self.name}_input_matchup.csv")
+        path_out = os.path.join(tmp_folder.name, f"{self.name}_output")
 
-    def predict(self, peptides, TCRs, repository: str, all: bool, **kwargs):
-        """
-        Overwrites ATCRSpecificityPrediction.predict
+        data[0].to_csv(path_tcrs)
+        data[1].to_csv(path_epitopes)
+        data[2].to_csv(path_test)
+        return [path_tcrs, path_tcrs_full, path_epitopes, path_epitopes_smi, path_test, path_out], tmp_folder
 
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide
-        :param peptides: The TCREpitope objects for which predictions should be performed
-        :type peptides: :class:`~epytope.Core.TCREpitope.TCREpitope` or list(:class:`~epytope.Core.TCREpitope.TCREpitope`)
-        :param TCRs: T cell receptor objects
-        :type  :class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor' or
-        list(:class:'~epytope.Core.AntigenImmuneReceptor.AntigenImmuneReceptor')
-        :param str repository: a path to a local github repository of TITAN predictor
-        :param bool all: if true each TCR object will be joined with each peptide to perform the prediction, otherwise
-        the prediction will be preformed in the same order of the passed peptides and TCRs objects
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
-        df = super().predict(peptides=peptides, TCRs=TCRs, repository=repository, all=all)
-        if "trained_model" in kwargs:
-            if not os.path.exists(kwargs["trained_model"]) or not os.path.isdir(kwargs["trained_model"]):
-                raise NotADirectoryError("please pass a path to a directory contains parameters for the trained model "
-                                         "of TITAN, which can be downloaded for "
-                                         "'https://ibm.ent.box.com/v/titan-dataset'. The folder, that contains the "
-                                         "trained model called 'trained_model', contains the weights and parameters "
-                                         "for the trained model of TITAN.")
-            else:
-                trained_model = kwargs["trained_model"]
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        path_module = self.get_package_dir("paccmann_tcr", interpreter, conda, cmd_prefix).split(os.sep)[:-1] + [".."]
 
-        df_result = self.predict_from_dataset(repository=repository, df=df, score=-1, trained_model=trained_model)
-        return df_result
+        path_imgt = os.sep.join(path_module + ["datasets", "imgt"])
+        if not os.path.exists(os.sep.join([path_imgt, "V_segment_sequences.fasta"])) or \
+                not os.path.exists(os.sep.join([path_imgt, "J_segment_sequences.fasta"])):
+            raise NotADirectoryError(f"Please download the V and J segment files from "
+                                     "https://www.imgt.org/vquest/refseqh.html \n"
+                                     "F+ORF+in-frame P - Amino acids - TRBV and TRBJ - Human "
+                                     f"to {path_imgt} as V_segment_sequences.fasta and J_segment_sequences.fasta")
 
-    def prepare_dataset_TITAN(self, df: pd.DataFrame,
-                              directory: str = "/home/mahmoud/PycharmProjects/Benchmark/data/TITAN/Running") -> str:
-        """
-        process the dataset in the way to be suitable with TITAN's input
-        :param directory: a string representing a path to a directory, where the precessed files will be saved
-        :param df: a dataframe contains TRB seqs and corresponding epitopes to predict, if they bind or not
-        :return: returns the directory parameter, where one can find all processed files, used for prediction
-        :rtype: str
-        """
-        # select only the required feature to run TITAN https://github.com/PaccMann/TITAN
-        test_set = df[["full_seq", "Peptide"]]
-        uni_epitopes = list(df.loc[:, "Peptide"].unique())
-        # Convert an amino acid sequence (IUPAC) into SMILES.
-        uni_epitopes_smi = [aas_to_smiles(pep) for pep in uni_epitopes]
-        peptide_ID = dict(zip(uni_epitopes, [i for i in range(len(uni_epitopes))]))
-        epitopes_smi = pd.DataFrame({"Peptide": uni_epitopes_smi, "Peptide_ID": peptide_ID.values()})
-        epitopes_smi.to_csv(os.path.join(directory, "epitopes.smi"), header=False, sep="\t", index=False)
-        uni_tcrs = list(df.loc[:, "full_seq"].unique())
-        tcr_ID = dict(zip(uni_tcrs, [i for i in range(len(uni_tcrs))]))
-        tcrs = pd.DataFrame({"full_seq": uni_tcrs, "TRB_ID": tcr_ID.values()})
-        tcrs.to_csv(os.path.join(directory, "tcrs.csv"), header=False, index=False, sep="\t")
-        ligand_name = df.loc[:, "Peptide"].map(lambda x: peptide_ID[x])
-        sequence_id = df.loc[:, "full_seq"].map(lambda x: tcr_ID[x])
-        label = [1 for _ in range(df.shape[0])]
-        test_dataset = pd.DataFrame({"ligand_name": ligand_name, "sequence_id": sequence_id, "label": label})
-        test_dataset.to_csv(os.path.join(directory, "input.csv"))
-        return directory
+        # path tcr to full seq
+        cmd_tcr = f"{os.sep.join(path_module + ['scripts/cdr3_to_full_seq.py'])} {path_imgt} " \
+                  f"{filenames[0]} VDJ_v_gene VDJ_j_gene VDJ_cdr3 {filenames[1]}"
 
-    def predict_from_dataset(self, repository: str, path: str = None, df: pd.DataFrame = None, source: str = None,
-                             score: int = 1, **kwargs):
-        """
-        Predicts binding probability between a T-cell receptor CDR3 protein sequence and a peptide.
-        The path should lead to csv file with fixed column names dataset.columns = ['TRA', 'TRB', "TRAV", "TRAJ",
-        "TRBV", "TRBJ", "T-Cell-Type", "Peptide", "MHC", "Species", "Antigen.species", "Tissue"]. If some values for
-        one or more variables are unavailable, leave them as blank cells.
-        :param str repository: a path to a local github repository of TITAN predictor
-        :param str path: a string representing a path to the dataset(csv file), which will be processed. Default value
-        is None, when the dataframe object is given
-        :param `pd.DataFrame` df: a dataframe object. Default value is None, when the path is given
-        :param str source: the source of the dataset [vdjdb, mcpas, scirpy, IEDB]. If this parameter is not passed,
-         the dataset should be a csv file with the column names mentioned above
-        :param int score: An integer representing a confidence score between 0 and 3 (0: critical information missing,
-        1: medium confidence, 2: high confidence, 3: very high confidence). By processing all entries with a confidence
-        score >= the passed parameter score will be kept. Default value is 1
-        :param str trained_on: specifying the dataset the model trained on. This parameter is specific for ERGO, which
-        has two models, one is trained on vdjdb and the other is trained on McPAS dataset.
-        :param trained_model a string representing a path to the trained model directory. For ERGO this parameter will
-        be ignored
-        :param down: a boolean value for choosing from two different models of ImRex. If it is set to Ture, the model,
-        trained of down sampled dataset of vdjdb will be selected, otherwise the other trained model will be chosen.
-        Default value is False.
-        :param nettcr_chain: a string specifying the chain(s) to use (a, b, ab). Default: b.
-        :param pMTnet_interpreter: a string representing a path to python interpreter for pMTnet.
-        :param chain: a string representing the type of the used cdr3-sequence in the prediction. It can be set to 'a'
-        for alpha- or 'b' for beta-sequences. This parameter specifics the input chain for ATM-TCR.
-        :param padding str: can be set to one of the following values ['front, end, mid, alignment'] and specifics the
-        padding type for ATM-TCR.
-        :param cuda bool: it can be set to True, if the running device has cuda.
-        :return: A :class:`~epytope.Core.TCRSpecificityPredictionResult` object
-        :rtype: :class:`~epytope.Core.TCRSpecificityPredictionResult`
-        """
+        # cmd epitopes to smi
+        cmd_epitope = ["from pytoda.proteins.utils import aas_to_smiles",
+                       "import pandas as pd",
+                       f"df_epitopes = pd.read_csv(r'{filenames[2]}', index_col=0)",
+                       "epitopes_smi = [aas_to_smiles(pep) for pep in df_epitopes['ligand']]",
+                       "epitopes_smi = pd.DataFrame({'ligand': epitopes_smi, 'ligand_id': df_epitopes['ligand_id']})",
+                       f"epitopes_smi.to_csv(r'{filenames[3]}', header=False, sep='\\t', index=False)",
+                       ]
+        cmd_epitope = f' -c "{"; ".join(cmd_epitope)}"'
 
-        if path is None and df is None:
-            raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        if df is None:
-            if os.path.isfile(path):
-                df = process_dataset_TCR(path=path, source=source, score=score)
-            else:
-                raise FileNotFoundError("A path to a csv file or a dataframe should be passed")
-        else:
-            df = process_dataset_TCR(df=df, source=source, score=score)
-        if "trained_model" in kwargs:
-            if not os.path.exists(kwargs["trained_model"]) or not os.path.isdir(kwargs["trained_model"]):
-                raise NotADirectoryError("please pass a path to a directory contains parameters for the trained model "
-                                         "of TITAN, which can be downloaded for "
-                                         "'https://ibm.ent.box.com/v/titan-dataset'. The folder, that contains the "
-                                         "trained model called 'trained_model', contains the weights and parameters "
-                                         "for the trained model of TITAN.")
-            else:
-                trained_model = kwargs["trained_model"]
-        if not os.path.isdir(repository):
-            raise NotADirectoryError("please pass a path as a string to a local TITAN repository. To clone the "
-                                     "repository type: 'git clone https://github.com/PaccMann/TITAN.git' in the "
-                                     "terminal")
-        # get the full TCR-sequence depending on the corresponding v- and j-region
-        directory = os.path.join(Path(__file__).parent, "data")
-        df_titan, mask = self.get_TRB_full_seq(df, directory=directory, local_titan_repository=repository)
-        # remove non aa characters from full cdr3 seqs
-        df_titan.loc[:, "full_seq"] = df_titan["full_seq"].map(lambda x: x.replace("*", ""))
-        tmp_dir = tempfile.TemporaryDirectory()
-        # TITAN throws an Exception, if the dataset has only one sample. To deal with this issue the dataset will be
-        # duplicated, but the end result contains only one sample
-        if len(df_titan) == 1:
-            df_titan = pd.concat([df_titan, df_titan])
-        self.prepare_dataset_TITAN(df=df_titan, directory=tmp_dir.name)
-        epitopes = os.path.join(tmp_dir.name, "epitopes.smi")
-        tcrs = os.path.join(tmp_dir.name, "tcrs.csv")
-        test_set = os.path.join(tmp_dir.name, "input.csv")
-        scores = os.path.join(tmp_dir.name, "scores")
-        try:
-            cmd = f"python {os.path.join(repository, 'scripts/flexible_model_eval.py')} {test_set} {tcrs} {epitopes} " \
-                  f"{trained_model} bimodal_mca {scores}"
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
-            stdo, stde = p.communicate()
-            stdr = p.returncode
-            if stdr > 0:
-                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
-            if os.path.getsize((scores + ".npy")) == 0:
-                raise RuntimeError(
-                    "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
-                    stdo.decode())
-        except Exception as e:
-            raise RuntimeError(e)
-        result = self.parse_external_result(file=scores, df=df)
-        tmp_dir.cleanup()
-        if sum(mask) < df.shape[0]:
-            print(f"TITAN's trained model can not make predictions for those samples, which their v- or "
-                  f"j-regions are not included in the human v- or j-regions given by IMGT. Therefore the prediction "
-                  f"score for these samples will be -1.")
-        df_result = TCRSpecificityPredictionResult.from_dict(result)
-        df_result.index = pd.MultiIndex.from_tuples([tuple((ID, TRA, TRB, pep)) for ID, TRA, TRB, pep in df_result.index],
-                                                        names=["Receptor_ID", 'TRA', 'TRB', "Peptide"])
-        return df_result
+        # cmd prediction
+        trained_model = os.sep.join(path_module + ["trained_model"])
+        cmd_model = f"{os.sep.join(path_module + ['scripts/flexible_model_eval.py'])} " \
+                    f"{filenames[4]} {filenames[1]} {filenames[3]} {trained_model} bimodal_mca {filenames[5]}"
+        return [cmd_tcr, cmd_epitope, cmd_model]
 
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        super().run_exec_cmd(cmd[0], [None, filenames[1]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+        df_tcrs_full = pd.read_csv(filenames[1])[["full_seq", "sequence_id"]]
+        df_tcrs_full.to_csv(filenames[1], index=False, header=False, sep="\t")
+        super().run_exec_cmd(cmd[1], [None, filenames[3]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+        filenames[5] = f"{filenames[5]}.npy"
+        super().run_exec_cmd(cmd[2], [None, filenames[5]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+
+    def format_results(self, filenames, tcrs, pairwise):
+        results_predictor = np.load(filenames[5])[0]
+        df_matchup = pd.read_csv(filenames[4], index_col=0)
+        df_tcrs = pd.read_csv(filenames[0], index_col=0)
+        df_epitopes = pd.read_csv(filenames[2], index_col=0)
+
+        df_matchup = df_matchup[["sequence_id", "ligand_name"]]
+        df_matchup["Score"] = results_predictor
+        df_matchup = df_matchup.drop_duplicates()
+
+        df_matchup = pd.merge(df_matchup, df_tcrs, left_on="sequence_id", right_on="sequence_id")
+        df_matchup = pd.merge(df_matchup, df_epitopes, left_on="ligand_name", right_on="ligand_id")
+        df_matchup = df_matchup[["VDJ_v_gene", "VDJ_j_gene", "VDJ_cdr3", "ligand", "Score"]]
+        df_matchup = df_matchup.rename(columns={"ligand": "Peptide"})
+
+        df_matchup["MHC"] = "HLA-A*02:01"  # TODO: resolve matching is over
+
+        df_out = TCRSpecificityPredictionResult.from_output(df_matchup, tcrs, pairwise, self.name)
+        return df_out

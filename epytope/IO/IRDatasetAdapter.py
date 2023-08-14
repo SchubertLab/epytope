@@ -21,8 +21,11 @@ from epytope.Core.Base import ATCRDatasetAdapter
 
 
 class IRDataset(metaclass=ABCMeta):
-    def __init__(self):
-        self.receptors = None
+    __name = "dataset"
+    __version = "1.0.0.0"
+
+    def __init__(self, receptors=None):
+        self.receptors = receptors
 
     def from_dataframe(self, df_irs, column_celltype="celltype", column_organism="organism",
                        prefix_vj_chain="VJ_", prefix_vdj_chain="VDJ_",
@@ -102,6 +105,14 @@ class IRDataset(metaclass=ABCMeta):
         df_irs = self.to_pandas(rename_columns)
         path_out = path_out if path_out.endswith('.csv') else f"{path_out}.csv"
         df_irs.to_csv(path_out)
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
 
 
 class MetaclassTCRAdapter(type):
