@@ -276,8 +276,8 @@ class epiTCR(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope", "MHC": "HLA"}) #add MHC sequence?
         df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
         df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
-        df_tcrs['binder'] = 1
-        df_tcrs.at[0, 'binder'] = 0
+        df_tcrs["binder"] = 1
+        df_tcrs.at[0, "binder"] = 0
         df_tcrs["HLA"] = df_tcrs["HLA"].str[4:]
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(inplace = True)
