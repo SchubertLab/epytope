@@ -339,3 +339,79 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
                             for row in result.itertuples(index=False)
                            }
                }
+
+class epiTCR(ARepoTCRSpecificityPrediction):
+    """
+    Author: Pham et al.
+    Paper: https://academic.oup.com/bioinformatics/article/39/5/btad284/7140137
+    Repo: https://github.com/ddiem-ri-4D/epiTCR
+    """
+    __name = "epiTCR"
+    __version = ""
+    __trc_length = (8, 19)
+    __epitope_length = (8, 11)
+    __repo = "https://github.com/ddiem-ri-4D/epiTCR.git"
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__trc_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        rename_columns = {
+            "VDJ_cdr3": "CDR3b",
+        }
+        required_columns = list(rename_columns.values()) + ["epitope", "HLA", "binder"]
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope", "MHC": "HLA"}) #add MHC sequence?
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
+        df_tcrs["binder"] = 1
+        df_tcrs.at[0, "binder"] = 0
+        df_tcrs["HLA"] = df_tcrs["HLA"].str[4:]
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs.drop_duplicates(inplace = True)
+        return df_tcrs
+
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, repository="", model_path=None, **kwargs):
+        model_filepath = os.path.join(repository, "models", "rdforestWithoutMHCModel.pickle") if model_path is None else model_path
+        return f"predict.py --testfile {filenames[0]} --modelfile {model_filepath} --chain ce >> {filenames[1]}"
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
+
+    def format_results(self, filenames, tcrs, pairwise):
+        results_predictor = pd.read_csv(filenames[1], skiprows=15, index_col=False)
+        results_predictor = results_predictor[:-1]
+        results_predictor["MHC"] = ""
+        results_predictor = results_predictor.rename(columns={"CDR3b": "VDJ_cdr3",
+                                                              "epitope": "Peptide",
+                                                              "predict_proba": "Score"})
+        required_columns = ["Peptide", "MHC", "Score"]
+        joining_list = ["VDJ_cdr3"]
+        required_columns.extend(joining_list)
+        results_predictor = results_predictor[required_columns]
+        out = self.transform_output(results_predictor, tcrs, pairwise, joining_list, method=self.name)
+        result = TCRSpecificityPredictionResult(out)
+        return result

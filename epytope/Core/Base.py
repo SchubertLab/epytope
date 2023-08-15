@@ -463,7 +463,7 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         import pandas as pd
         n_tcrs = len(df_tcrs)
         df_tcrs = pd.concat([df_tcrs] * len(epitopes))
-        peptides = [[epitope.peptide]*n_tcrs for epitope in epitopes]
+        peptides = [[str(epitope.peptide)]*n_tcrs for epitope in epitopes]
         mhcs = [[epitope.allele if epitope.allele is not None else ""]*n_tcrs for epitope in epitopes]
         df_tcrs["Epitope"] = [item for sublist in peptides for item in sublist]
         df_tcrs["MHC"] = [item for sublist in mhcs for item in sublist]
@@ -478,7 +478,7 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         :return: dataframe of len(df_tcrs))
         :rtype: pd.DataFrame
         """
-        peptides = [epitope.peptide for epitope in epitopes]
+        peptides = [str(epitope.peptide) for epitope in epitopes]
         mhcs = [epitope.allele for epitope in epitopes]
         df_tcrs["Epitope"] = peptides
         df_tcrs["MHC"] = mhcs
