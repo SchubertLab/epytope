@@ -281,7 +281,6 @@ class epiTCR(ARepoTCRSpecificityPrediction):
         df_tcrs["HLA"] = df_tcrs["HLA"].str[4:]
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(inplace = True)
-        #print(df_tcrs)
         return df_tcrs
 
 
