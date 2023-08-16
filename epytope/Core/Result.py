@@ -458,31 +458,3 @@ class TCRSpecificityPredictionResult(AResult):
         if type(others) == type(self):
             others = [others]
         return TCRSpecificityPredictionResult(pandas.concat([self] + others, axis=1))
-
-    @staticmethod
-    def from_output(df_predictor, tcrs, pairwise, method):
-        from epytope.Core.TCREpitope import TCREpitope
-        import pandas as pd
-        df_out = tcrs.to_pandas()
-        df_out.columns = pd.MultiIndex.from_tuples(('TCR', el) for el in df_out.columns)
-
-        if not pairwise:
-            results_predictor = df_predictor[['Peptide', 'MHC', 'Score']]
-            results_predictor.columns = pd.MultiIndex.from_tuples([("Epitope", "Peptide"), ("Epitope", "MHC"),
-                                                                   ("Method", method)])
-            df_out = pd.concat([df_out, results_predictor], axis=1)
-        else:
-            epitopes = df_predictor[["Peptide", "MHC"]].drop_duplicates()
-            epitopes = [TCREpitope(row["Peptide"], row["MHC"]) for i, row in epitopes.iterrows()]
-
-            idcs = df_predictor[(df_predictor["Peptide"] == epitopes[0].peptide) &
-                                (df_predictor["MHC"].astype(str) == (epitopes[0].allele
-                                                                     if epitopes[0].allele else ""))].index
-            for epitope in epitopes:
-                df_tmp = df_predictor[(df_predictor["Peptide"] == epitope.peptide) &
-                                      (df_predictor["MHC"].astype(str) == (epitope.allele if epitope.allele
-                                                                           else ""))][["Score"]].copy()
-                df_tmp.index = idcs
-                df_tmp.columns = pd.MultiIndex.from_tuples([(str(epitope), method)])
-                df_out = pd.concat([df_out, df_tmp], axis=1)
-        return TCRSpecificityPredictionResult(df_out)
