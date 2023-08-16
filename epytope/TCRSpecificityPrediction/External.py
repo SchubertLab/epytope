@@ -408,3 +408,104 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
         joining_list = ["VDJ_cdr3", "Epitope"]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
+
+class Ergo1(ARepoTCRSpecificityPrediction):
+    """
+    Author: Springer et al.
+    Paper: https://www.frontiersin.org/articles/10.3389/fimmu.2020.01803/full
+    Repo: https://github.com/louzounlab/ERGO
+    """
+    __name = "ERGO-II"
+    __version = ""
+    __tcr_length = (0, 30)  # TODO
+    __epitope_length = (0, 30)  # TODO
+    __repo = "https://github.com/louzounlab/ERGO.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3b"
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        required_columns = list(self._rename_columns.values()) + ["epitope"]
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope"})
+
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs = self.filter_by_length(df_tcrs, None, "TRB", "epitope")
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        dataset = "vdjdb" if "dataset" not in kwargs else kwargs["dataset"]
+        return f"Predict.py ERGO.py predict lstm dataset specific cpu --model_file=models/lstm_vdjdb1.pt --train_data_file=train_data --test_data_file={filenames[0]} >> {filenames[1]}"
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1], index_col=0)
+        print(results_predictor)
+        results_predictor = results_predictor.fillna("")
+        results_predictor = results_predictor.rename(columns={k: v for v, k in self._rename_columns.items()})
+        results_predictor = results_predictor.rename(columns={"Peptide": "Epitope"})
+        joining_list = list(self._rename_columns.keys()) + ["Epitope", "MHC"]
+        joining_list.remove("celltype")
+        results_predictor = results_predictor[joining_list + ["Score"]]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+    def correct_code(self, path_repo):
+        """
+        The github repo contains several bugs, which will be corrected here.
+        """
+        script = []
+        with open(os.path.join(path_repo, "Predict.py"), "r") as f:
+            script.extend(f.readlines())
+        # make output to pandas
+        if "    df.to_csv(sys.argv[3], sep=',', index=False)\n" not in script:
+            idx = script.index("    df = predict(sys.argv[1], sys.argv[2])\n")
+            script.insert(idx + 1, "    df.to_csv(sys.argv[3], sep=',', index=False)\n")
+            with open("Predict.py", "w") as f:
+                f.writelines(script)
+
+        # Cpu + gpu usable
+        script = []
+        with open(os.path.join(path_repo, "Models.py"), "r") as f:
+            script.extend(f.readlines())
+        if "        checkpoint = torch.load(ae_file)\n" in script:
+            idx = script.index("        checkpoint = torch.load(ae_file)\n")
+            script[idx] = "        checkpoint = torch.load(ae_file, " \
+                          "map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))\n"
+            with open("Models.py", "w") as f:
+                f.writelines(script)
+
+        # rename folders
+        if os.path.isdir(os.path.join(path_repo, "Models", "AE")):
+            shutil.move(os.path.join(path_repo, "Models", "AE"), os.path.join(path_repo, "TCR_Autoencoder"))
+
