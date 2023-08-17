@@ -456,7 +456,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope"})
 
         df_tcrs = df_tcrs[required_columns]
-        df_tcrs = self.filter_by_length(df_tcrs, None, "TRB", "epitope")
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
         df_tcrs = df_tcrs.drop_duplicates()
         df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
         return df_tcrs
