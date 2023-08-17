@@ -448,13 +448,11 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     def format_tcr_data(self, tcrs, epitopes, pairwise):
         required_columns = list(self._rename_columns.values()) + ["epitope"]
         df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
-
         if pairwise:
             df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope"})
-
         df_tcrs = df_tcrs[required_columns]
         df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
         df_tcrs = df_tcrs.drop_duplicates()
