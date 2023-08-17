@@ -482,7 +482,6 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         results_predictor["MHC"] = ""
         results_predictor = results_predictor.rename(columns={"0": "VDJ_cdr3", "1": "Epitope", "2":"Score"})
         joining_list = ["VDJ_cdr3", "Epitope"]
-        joining_list.remove("celltype")
         #results_predictor = results_predictor[joining_list + ["Score"]]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
