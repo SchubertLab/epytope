@@ -459,7 +459,6 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
         df_tcrs = df_tcrs.drop_duplicates()
         df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
-        print(df_tcrs)
         return df_tcrs
     
     def save_tmp_files(self, data, **kwargs):
@@ -471,7 +470,8 @@ class Ergo1(ARepoTCRSpecificityPrediction):
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         dataset = "vdjdb" if "dataset" not in kwargs else kwargs["dataset"]
-        return f"ERGO.py predict lstm {dataset} specific cpu --model_file=models/lstm_vdjdb1.pt --train_data_file=train_data --test_data_file={filenames[0]} >> {filenames[1]}"
+        model_type = "lstm" if "model_type" not in kwargs else kwargs["model_type"]
+        return f"ERGO.py predict {model_type} {dataset} specific cpu --model_file=models/lstm_vdjdb1.pt --train_data_file=train_data --test_data_file={filenames[0]} >> {filenames[1]}"
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
@@ -479,9 +479,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     def format_results(self, filenames, tcrs, epitopes, pairwise):
         results_predictor = pd.read_csv(filenames[1], sep='\t', names = ["VDJ_cdr3", "Epitope", "Score"], header=None)
         results_predictor["MHC"] = ""
-        #results_predictor = results_predictor.rename(columns={"0": "VDJ_cdr3", "1": "Epitope", "2":"Score"})
         joining_list = ["VDJ_cdr3", "Epitope"]
         results_predictor = results_predictor[joining_list + ["MHC", "Score"]]
-        print(results_predictor)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
