@@ -25,7 +25,7 @@ reqs = {
 }
 
 choices = {
-    "ergo-i": {"dataset": ["vdjdb", "mcpas"]}
+    "ergo-i": {"dataset": ["vdjdb", "mcpas"], "model_type": ["lstm", "ae"], "cuda": ["gpu", "cpu"]}
 }
 
 epitopes_pairwise = [epitope_1, epitope_2]
