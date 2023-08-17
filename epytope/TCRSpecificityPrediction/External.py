@@ -478,40 +478,10 @@ class Ergo1(ARepoTCRSpecificityPrediction):
 
     def format_results(self, filenames, tcrs, epitopes, pairwise):
         results_predictor = pd.read_csv(filenames[1], sep='\t', header=None)
-        print(results_predictor)
         results_predictor["MHC"] = ""
         results_predictor = results_predictor.rename(columns={"0": "VDJ_cdr3", "1": "Epitope", "2":"Score"})
         joining_list = ["VDJ_cdr3", "Epitope"]
         #results_predictor = results_predictor[joining_list + ["Score"]]
+        print(results_predictor)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
-
-    def correct_code(self, path_repo):
-        """
-        The github repo contains several bugs, which will be corrected here.
-        """
-        script = []
-        with open(os.path.join(path_repo, "Predict.py"), "r") as f:
-            script.extend(f.readlines())
-        # make output to pandas
-        if "    df.to_csv(sys.argv[3], sep=',', index=False)\n" not in script:
-            idx = script.index("    df = predict(sys.argv[1], sys.argv[2])\n")
-            script.insert(idx + 1, "    df.to_csv(sys.argv[3], sep=',', index=False)\n")
-            with open("Predict.py", "w") as f:
-                f.writelines(script)
-
-        # Cpu + gpu usable
-        script = []
-        with open(os.path.join(path_repo, "Models.py"), "r") as f:
-            script.extend(f.readlines())
-        if "        checkpoint = torch.load(ae_file)\n" in script:
-            idx = script.index("        checkpoint = torch.load(ae_file)\n")
-            script[idx] = "        checkpoint = torch.load(ae_file, " \
-                          "map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))\n"
-            with open("Models.py", "w") as f:
-                f.writelines(script)
-
-        # rename folders
-        if os.path.isdir(os.path.join(path_repo, "Models", "AE")):
-            shutil.move(os.path.join(path_repo, "Models", "AE"), os.path.join(path_repo, "TCR_Autoencoder"))
-
