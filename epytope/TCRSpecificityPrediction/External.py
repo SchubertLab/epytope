@@ -417,8 +417,8 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     """
     __name = "ERGO-I"
     __version = ""
-    __tcr_length = (0, 30)  # TODO
-    __epitope_length = (0, 30)  # TODO
+    __tcr_length = (0, 30)  # TODO found no info in paper
+    __epitope_length = (0, 30)  # TODO found no info in paper
     __repo = "https://github.com/louzounlab/ERGO.git"
 
     _rename_columns = {
@@ -472,12 +472,13 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         dataset = "vdjdb" if "dataset" not in kwargs else kwargs["dataset"]
         model_type = "lstm" if "model_type" not in kwargs else kwargs["model_type"]
         cuda = "cpu" if "cuda" not in kwargs else kwargs["cuda"]
+        sampling = "specific" if "sampling" not in kwargs else kwargs["sampling"]
         repository = kwargs["repository"]
         model = "lstm_vdjdb1"
         if "model" in kwargs:
             model = kwargs["model"]
         model_filepath = os.path.join(repository, "models", f"{model}.pt")
-        return f"ERGO.py predict {model_type} {dataset} specific {cuda} --model_file={model_filepath} --train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
+        return f"ERGO.py predict {model_type} {dataset} {sampling} {cuda} --model_file={model_filepath} --train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
