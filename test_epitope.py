@@ -21,8 +21,8 @@ tcr_repertoire.from_path(path_data)
 
 predictor = TCRSpecificityPredictorFactory("ergo-I")
 results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/ERGO", conda="ergo", pairwise=False)
-print(results[:20, 4:])
+print(results[4:, :20])
 
 predictor = TCRSpecificityPredictorFactory("ergo-I")
 results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/ERGO", conda="ergo", pairwise=True)
-print(results[:20, 4:])
+print(results[4:, :20])
