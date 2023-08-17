@@ -20,7 +20,7 @@ tcr_repertoire = IRDatasetAdapterFactory("mcpas-tcr")
 tcr_repertoire.from_path(path_data)
 
 predictor = TCRSpecificityPredictorFactory("ergo-I")
-results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/ERGO", conda="ergo", model = "auto", pairwise=False)
+results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/ERGO", conda="ergo", pairwise=False)
 results.to_csv("out_single.csv")
 
 predictor = TCRSpecificityPredictorFactory("ergo-I")
