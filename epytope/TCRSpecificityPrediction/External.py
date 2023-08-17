@@ -484,9 +484,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
 
     def format_results(self, filenames, tcrs, epitopes, pairwise):
         results_predictor = pd.read_csv(filenames[1], sep='\t', names = ["VDJ_cdr3", "Epitope", "Score"], header=None)
-        results_predictor["MHC"] = ""
-        joining_list = ["VDJ_cdr3", "Epitope"]
-        results_predictor = results_predictor[joining_list + ["MHC", "Score"]]
-        print(results_predictor)
+        joining_list = ["Epitope", "VDJ_cdr3"]
+        results_predictor = results_predictor[joining_list + ["Score"]]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
