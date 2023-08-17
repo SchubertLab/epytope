@@ -461,6 +461,13 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
         print(df_tcrs)
         return df_tcrs
+    
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
+        path_out = os.path.join(tmp_folder.name, f"{self.name}_output.csv")
+        data.to_csv(path_in, index=False, header=False)
+        return [path_in, path_out], tmp_folder
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         dataset = "vdjdb" if "dataset" not in kwargs else kwargs["dataset"]
