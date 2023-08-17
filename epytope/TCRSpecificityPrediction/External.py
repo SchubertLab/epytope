@@ -472,12 +472,14 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         dataset = "vdjdb" if "dataset" not in kwargs else kwargs["dataset"]
         model_type = "lstm" if "model_type" not in kwargs else kwargs["model_type"]
         cuda = "cpu" if "cuda" not in kwargs else kwargs["cuda"]
-        sampling = "specific" if "sampling" not in kwargs else kwargs["sampling"]
+        sampling = "specific" if "sampling" not in kwargs else kwargs["sampling"] #do we need sampling parameter?
         repository = kwargs["repository"]
         model = "lstm_vdjdb1"
         if "model" in kwargs:
             model = kwargs["model"]
         model_filepath = os.path.join(repository, "models", f"{model}.pt")
+        if model == "auto":
+            model_filepath = "auto"
         return f"ERGO.py predict {model_type} {dataset} {sampling} {cuda} --model_file={model_filepath} --train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
