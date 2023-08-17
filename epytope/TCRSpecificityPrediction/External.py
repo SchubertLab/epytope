@@ -415,7 +415,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     Paper: https://www.frontiersin.org/articles/10.3389/fimmu.2020.01803/full
     Repo: https://github.com/louzounlab/ERGO
     """
-    __name = "ERGO-II"
+    __name = "ERGO-I"
     __version = ""
     __tcr_length = (0, 30)  # TODO
     __epitope_length = (0, 30)  # TODO

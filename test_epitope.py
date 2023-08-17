@@ -19,6 +19,6 @@ tcr_repertoire = IRDatasetAdapterFactory("mcpas-tcr")
 
 tcr_repertoire.from_path(path_data)
 
-predictor = TCRSpecificityPredictorFactory("panpep")
-results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/PanPep", conda="panpen", pairwise=False)
+predictor = TCRSpecificityPredictorFactory("ergo-I")
+results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/ERGO", conda="ergo", pairwise=False)
 print(results.head(3))
