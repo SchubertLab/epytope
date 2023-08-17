@@ -21,7 +21,7 @@ for name, version in TCRSpecificityPredictorFactory.available_methods().items():
     print(name, ",".join(version))
 
 reqs = {
-    "ergo-i": {"repository": "../ERGO"},
+    "ergo-i": {"repository": "../ERGO", "conda": "ergo"},
 }
 
 choices = {
