@@ -471,7 +471,8 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         dataset = "vdjdb" if "dataset" not in kwargs else kwargs["dataset"]
         model_type = "lstm" if "model_type" not in kwargs else kwargs["model_type"]
-        return f"ERGO.py predict {model_type} {dataset} specific cpu --model_file=models/lstm_vdjdb1.pt --train_data_file=train_data --test_data_file={filenames[0]} >> {filenames[1]}"
+        model_path = "models/lstm_vdjdb1.pt" if "model_path" not in kwargs else kwargs["model_path"]
+        return f"ERGO.py predict {model_type} {dataset} specific cpu --model_file={model_path} --train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
