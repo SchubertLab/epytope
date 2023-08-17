@@ -477,7 +477,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
 
     def format_results(self, filenames, tcrs, epitopes, pairwise):
-        results_predictor = pd.read_csv(filenames[1], index_col=0)
+        results_predictor = pd.read_csv(filenames[1], header=None)
         print(results_predictor)
         results_predictor = results_predictor.fillna("")
         results_predictor = results_predictor.rename(columns={k: v for v, k in self._rename_columns.items()})
