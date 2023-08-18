@@ -443,7 +443,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
 
     def format_tcr_data(self, tcrs, epitopes, pairwise):
         rename_columns = {
-            "VDJ_cdr3": "tcr"
+            "VDJ_cdr3": "tcr",
         }
         required_columns = list(rename_columns.values()) + ["antigen", "label"]
         df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
@@ -452,12 +452,12 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs = df_tcrs.rename(columns={"Epitope": "antigen"})
-        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
+        df_tcrs = self.filter_by_length(df_tcrs, None, "tcr", "antigen")
         df_tcrs = df_tcrs[(~df_tcrs["tcr"].isna()) & (df_tcrs["tcr"] != "")]
+        df_tcrs.drop_duplicates(inplace=True, keep="first")
         df_tcrs["label"] = 1
         df_tcrs.iat[0, df_tcrs.columns.get_loc("label")] = 0
         df_tcrs = df_tcrs[required_columns]
-        df_tcrs.drop_duplicates(inplace=True, keep="first")
         return df_tcrs
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
@@ -466,7 +466,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
             model = kwargs["model"]
         repository = kwargs["repository"]
         model_filepath = os.path.join(repository, "Models", f"{model}.pt")
-        path_script = os.path.join(repository, "Codes", "AttnTAP_test.py")
+        path_script = os.path.join("Codes", "AttnTAP_test.py")
         return f"{path_script} --input_file {filenames[0]} --output_file {filenames[1]} --load_model_file {model_filepath}"
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
