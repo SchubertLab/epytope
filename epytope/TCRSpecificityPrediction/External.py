@@ -418,7 +418,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
     __name = "AttnTAP"
     __version = ""
     __trc_length = (6, 30)
-    __epitope_length = (0, 40)
+    __epitope_length = (0, 30)
     __repo = "https://github.com/Bioinformatics7181/AttnTAP.git"
 
     @property
