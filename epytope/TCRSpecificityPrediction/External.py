@@ -461,9 +461,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
         return df_tcrs
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = "cv_model_0_vdjdb_0"
-        if "model" in kwargs:
-            model = kwargs["model"]
+        model = "cv_model_0_vdjdb_0" if "model" not in kwargs else kwargs["model"]
         repository = kwargs["repository"]
         model_filepath = os.path.join(repository, "Models", f"{model}.pt")
         path_script = os.path.join("Codes", "AttnTAP_test.py")
@@ -472,7 +470,6 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
 
     def format_results(self, filenames, tcrs, epitopes, pairwise):
         results_predictor = pd.read_csv(filenames[1])
-        results_predictor = results_predictor[:-1]
         results_predictor = results_predictor.rename(columns={"tcr": "VDJ_cdr3",
                                                               "antigen": "Epitope",
                                                               "prediction": "Score"})
