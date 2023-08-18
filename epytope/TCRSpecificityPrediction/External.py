@@ -408,3 +408,80 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
         joining_list = ["VDJ_cdr3", "Epitope"]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
+
+class TEIM(ARepoTCRSpecificityPrediction):
+    """
+    Author: Peng et al.
+    Paper: https://www.nature.com/articles/s42256-023-00634-4
+    Repo: https://github.com/pengxingang/TEIM
+    """
+    __name = "TEIM"
+    __version = ""
+    __trc_length = (10, 20)
+    __epitope_length = (8, 12)
+    __repo = "https://github.com/pengxingang/TEIM.git"
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__trc_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        rename_columns = {
+            "VDJ_cdr3": "cdr3"
+        }
+        required_columns = list(rename_columns.values()) + ["epitope"]
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope"})
+        df_tcrs = self.filter_by_length(df_tcrs, None, "cdr3", "epitope")
+        df_tcrs = df_tcrs[(~df_tcrs["cdr3"].isna()) & (df_tcrs["cdr3"] != "")]
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs.drop_duplicates(inplace=True, keep="first")
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        path_script = os.path.join("scripts", "inference_seq.py")
+        return f"{path_script}"
+
+    def save_tmp_files(self, data, **kwargs):
+        repository = kwargs["repository"]
+        path_in = os.path.join(repository, "inputs", "inputs_bd.csv")
+        path_out = os.path.join(repository, "outputs", "sequence_level_binding.csv")
+        data.to_csv(path_in)
+        return [path_in, path_out], None
+    
+    def clean_up(self, tmp_folder, files=None):
+        for file in files:
+            if os.path.exists(file):
+                os.remove(file)
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1])
+        results_predictor = results_predictor.rename(columns={"cdr3": "VDJ_cdr3",
+                                                              "epitope": "Epitope",
+                                                              "binding": "Score"})
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor = results_predictor[required_columns]
+        results_predictor = results_predictor.drop_duplicates()
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
