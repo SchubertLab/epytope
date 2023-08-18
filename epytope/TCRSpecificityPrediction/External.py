@@ -469,8 +469,6 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
         path_script = os.path.join("Codes", "AttnTAP_test.py")
         return f"{path_script} --input_file {filenames[0]} --output_file {filenames[1]} --load_model_file {model_filepath}"
 
-    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
-        super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
 
     def format_results(self, filenames, tcrs, epitopes, pairwise):
         results_predictor = pd.read_csv(filenames[1])
