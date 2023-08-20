@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/icb/anna.chernysheva/epytope')
+sys.path.append('../../')
 
 from epytope.Core import Peptide, Allele
 from epytope.Core import Peptide, Allele, TCREpitope, ImmuneReceptorChain, ImmuneReceptor
@@ -12,7 +12,7 @@ allele = Allele("HLA-A*02:01")
 epitope_1 = TCREpitope(peptide=peptide, allele=allele)
 epitope_2 = TCREpitope(peptide="EAAGIGILTV", allele=allele)
 
-path_data = '../prak/data/vdjdb.tsv'
+path_data = '../../../vdjdb.tsv'
 tcr_repertoire = IRDatasetAdapterFactory("vdjdb")
 tcr_repertoire.from_path(path_data)
 tcr_repertoire.receptors = tcr_repertoire.receptors[:20]
@@ -21,11 +21,11 @@ for name, version in TCRSpecificityPredictorFactory.available_methods().items():
     print(name, ",".join(version))
 
 reqs = {
-    "ergo-i": {"repository": "../ERGO", "conda": "ergo"},
+    "ergo-i": {"repository": "../../../ERGO", "conda": "ergo"},
 }
 
 choices = {
-    "ergo-i": {"dataset": ["vdjdb", "mcpas"], "model_type": ["lstm", "ae"], "cuda": ["gpu", "cpu"], "sampling": ["naive", "memory", "specific"]}
+    "ergo-i": {"model_type": ["lstm", "ae"], "cuda": ["gpu", "cpu"]}
 }
 
 epitopes_pairwise = [epitope_1, epitope_2]
