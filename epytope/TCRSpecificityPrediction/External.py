@@ -472,6 +472,8 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         repository = kwargs["repository"]
         model = "lstm_vdjdb1" if "model" not in kwargs else kwargs["model"]
         model_filepath = os.path.join(repository, "models", f"{model}.pt")
+        print(repository)
+        print(os. getcwd())
         return f"ERGO.py predict {model_type} vdjdb specific {cuda} --model_file={model_filepath} --train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
