@@ -470,7 +470,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         model_type = "lstm" if "model_type" not in kwargs else kwargs["model_type"]
         cuda = "cpu" if "cuda" not in kwargs else kwargs["cuda"]
         repository = kwargs["repository"]
-        model = "lstm_vdjdb1" if "model" in not kwargs else kwargs["model"]
+        model = "lstm_vdjdb1" if "model" not in kwargs else kwargs["model"]
         model_filepath = os.path.join(repository, "models", f"{model}.pt")
         return f"ERGO.py predict {model_type} {dataset} {sampling} {cuda} --model_file={model_filepath} --train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
 
