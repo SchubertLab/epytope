@@ -409,6 +409,78 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
 
+class AttnTAP(ARepoTCRSpecificityPrediction):
+    """
+    Author: Xu et al.
+    Paper: https://www.frontiersin.org/articles/10.3389/fgene.2022.942491/full
+    Repo: https://github.com/Bioinformatics7181/AttnTAP
+    """
+    __name = "AttnTAP"
+    __version = ""
+    __trc_length = (6, 30)
+    __epitope_length = (0, 30)
+    __repo = "https://github.com/Bioinformatics7181/AttnTAP.git"
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__trc_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        rename_columns = {
+            "VDJ_cdr3": "cdr3"
+        }
+        required_columns = list(rename_columns.values()) + ["epitope"]
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "antigen"})
+        df_tcrs = self.filter_by_length(df_tcrs, None, "tcr", "antigen")
+        df_tcrs = df_tcrs[(~df_tcrs["tcr"].isna()) & (df_tcrs["tcr"] != "")]
+        df_tcrs.drop_duplicates(inplace=True, keep="first")
+        df_tcrs["label"] = 1
+        df_tcrs.iat[0, df_tcrs.columns.get_loc("label")] = 0
+        df_tcrs = df_tcrs[required_columns]
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        model = "cv_model_0_vdjdb_0" if "model" not in kwargs else kwargs["model"]
+        repository = kwargs["repository"]
+        model_filepath = os.path.join(repository, "Models", f"{model}.pt")
+        path_script = os.path.join("Codes", "AttnTAP_test.py")
+        return f"{path_script} --input_file {filenames[0]} --output_file {filenames[1]} --load_model_file {model_filepath}"
+
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1])
+        results_predictor = results_predictor.rename(columns={"tcr": "VDJ_cdr3",
+                                                              "antigen": "Epitope",
+                                                              "prediction": "Score"})
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor = results_predictor[required_columns]
+        results_predictor = results_predictor.drop_duplicates()
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+      
 class TEIM(ARepoTCRSpecificityPrediction):
     """
     Author: Peng et al.
@@ -485,3 +557,4 @@ class TEIM(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
+      
