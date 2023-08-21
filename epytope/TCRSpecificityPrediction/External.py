@@ -557,4 +557,83 @@ class TEIM(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
-      
+
+
+class BERTrand(ARepoTCRSpecificityPrediction):
+    """
+    Author: Myronov et al.
+    Paper: https://www.biorxiv.org/content/biorxiv/early/2023/06/13/2023.06.12.544613.full.pdf?%3Fcollection=
+    Repo: https://github.com/SFGLab/bertrand
+    """
+    __name = "BERTrand"
+    __version = ""
+    __tcr_length = (10, 20)
+    __epitope_length = (8, 11)
+    __repo = "https://github.com/SFGLab/bertrand.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3b"
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        required_columns = list(self._rename_columns.values()) + ["peptide_seq"]
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide_seq"})
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "peptide_seq")
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["y"] = 1
+        df_tcrs.iat[0, df_tcrs.columns.get_loc("y")] = 0
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        model = kwargs["model"]
+        if model is None or model == "" or not os.path.isdir(model):
+            raise TypeError(f"Please download and unzip model from git repository or https://drive.google.com/file/d/1FywbDbzhhYbwf99MdZrpYQEbXmwX9Zxm/view?usp=sharing.")
+        return f"bertrand.model.inference -i={filenames[0]} -m={model} -o={filenames[1]}"
+    
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        os.chdir(repository)
+        cmds = []
+        if cmd_prefix is not None:
+            cmds.append(cmd_prefix)
+        if conda is not None:
+            cmds.append(f"conda activate {conda}")
+        cmds.append(f"python -m {cmd}")
+        self.exec_cmd(" && ".join(cmds), filenames[1])
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1])
+        input_predictor = pd.read_csv(filenames[0])
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor[joining_list] = input_predictor[["CDR3b", "peptide_seq"]]
+        results_predictor = results_predictor.rename(columns={"0": "Score"})
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        results_predictor = results_predictor[required_columns]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
