@@ -717,7 +717,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
     Paper: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008814
     Repo: https://github.com/jiangdada1221/TEINet
     """
-    __name = "BERTrand"
+    __name = "TEINet"
     __version = ""
     __tcr_length = (5, 30)
     __epitope_length = (7, 15)
