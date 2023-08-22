@@ -710,3 +710,72 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor[joining_list + ["Score"]]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
+
+class TEINet(ARepoTCRSpecificityPrediction):
+    """
+    Author: Jiang et al.
+    Paper: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008814
+    Repo: https://github.com/jiangdada1221/TEINet
+    """
+    __name = "BERTrand"
+    __version = ""
+    __tcr_length = (5, 30)
+    __epitope_length = (7, 15)
+    __repo = "https://github.com/jiangdada1221/TEINet.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3b"
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        required_columns = list(self._rename_columns.values()) + ["CDR3.beta"]
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3.beta", "Epitope")
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3.beta"].isna()) & (df_tcrs["CDR3.beta"] != "")]
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["Label"] = 1
+        df_tcrs.iat[0, df_tcrs.columns.get_loc("Label")] = 0
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        model = "cuda:0" if "cuda" not in kwargs else kwargs["cuda"]
+        model = kwargs["model"]
+        if model is None or model == "" or not os.path.isfile(model):
+            raise TypeError(f"Please download model from git repository or https://drive.google.com/file/d/12pVozHhRcGyMBgMlhcjgcclE3wlrVO32/view?usp=sharing.")
+        return f"predict.py --dset_path {filenames[0]} --save_prediction_path {filenames[1]} --use_column CDR3.beta --model_path {model} --device {device}"
+    
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1], header=None, names=["Score", "Label"])
+        input_predictor = pd.read_csv(filenames[0])
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor[joining_list] = input_predictor[["CDR3b", "peptide_seq"]]
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        results_predictor = results_predictor[required_columns]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
