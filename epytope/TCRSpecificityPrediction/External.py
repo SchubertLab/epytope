@@ -724,7 +724,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
     __repo = "https://github.com/jiangdada1221/TEINet.git"
 
     _rename_columns = {
-        "VDJ_cdr3": "CDR3b"
+        "VDJ_cdr3": "CDR3.beta"
     }
 
     @property
