@@ -748,7 +748,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
         return self.__repo
 
     def format_tcr_data(self, tcrs, epitopes, pairwise):
-        required_columns = list(self._rename_columns.values()) + ["CDR3.beta"]
+        required_columns = list(self._rename_columns.values()) + ["Epitope"]
         df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
         if pairwise:
             df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
@@ -765,7 +765,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         device = "cuda:0" if "cuda" not in kwargs else kwargs["cuda"]
         model = kwargs["model"]
-        if model is None or model == "" or not os.path.isfile(model):
+        if model is None or model == "" or not os.path.isfile(model):#how to check better?
             raise TypeError(f"Please download model from git repository or https://drive.google.com/file/d/12pVozHhRcGyMBgMlhcjgcclE3wlrVO32/view?usp=sharing.")
         return f"predict.py --dset_path {filenames[0]} --save_prediction_path {filenames[1]} --use_column CDR3.beta --model_path {model} --device {device}"
     
