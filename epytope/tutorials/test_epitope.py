@@ -1,4 +1,5 @@
 import sys
+import os
 sys.path.append('../..')
 
 from epytope.Core import Peptide, Allele
@@ -7,6 +8,7 @@ from epytope.IO import IRDatasetAdapterFactory
 from epytope.TCRSpecificityPrediction import TCRSpecificityPredictorFactory
 import pandas as pd
 
+os.system('export LD_LIBRARY_PATH=/home/icb/anna.chernysheva/miniconda3/lib:$LD_LIBRARY_PATH')
 
 peptide = Peptide("SYFPEITHI")
 allele = Allele("HLA-A*02:01")
