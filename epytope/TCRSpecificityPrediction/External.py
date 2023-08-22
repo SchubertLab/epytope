@@ -774,7 +774,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
         results_predictor = pd.read_csv(filenames[1], header=None, names=["Score", "Label"])
         input_predictor = pd.read_csv(filenames[0])
         joining_list = ["VDJ_cdr3", "Epitope"]
-        results_predictor[joining_list] = input_predictor[["CDR3b", "peptide_seq"]]
+        results_predictor[joining_list] = input_predictor[["CDR3.beta", "Epitope"]]
         required_columns = ["VDJ_cdr3", "Epitope", "Score"]
         results_predictor = results_predictor[required_columns]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
