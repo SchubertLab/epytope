@@ -763,7 +763,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
         return df_tcrs
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = "cuda:0" if "cuda" not in kwargs else kwargs["cuda"]
+        device = "cuda:0" if "cuda" not in kwargs else kwargs["cuda"]
         model = kwargs["model"]
         if model is None or model == "" or not os.path.isfile(model):
             raise TypeError(f"Please download model from git repository or https://drive.google.com/file/d/12pVozHhRcGyMBgMlhcjgcclE3wlrVO32/view?usp=sharing.")
