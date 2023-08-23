@@ -773,6 +773,10 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         path_in = os.path.join(tmp_folder.name, f"{self.name}_input.xlsx")
         path_out = os.path.join(tmp_folder.name, f"TCR{model_type}_pred.csv")
         data.to_excel(path_in)
+        try:
+            shutil.copy(path_in, "/home/icb/anna.chernysheva/epytope/epytope/tutorials/try1.csv")
+        except EnvironmentError:
+            print("Unable to copy file")
         return [path_in, path_out], tmp_folder
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
