@@ -749,6 +749,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             "VJ_cdr3": "TCRA_CDR3",
             "VDJ_cdr3": "TCRB_CDR3"
         }
+        required_columns = list(rename_columns.values()) + ["Epitope"]
         df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
         if pairwise:
             df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
@@ -758,13 +759,13 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         if model_type == "B":
             df_tcrs = self.filter_by_length(df_tcrs, None, "TCRB_CDR3", "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRB_CDR3"].isna()) & (df_tcrs["TCRB_CDR3"] != "")]
-            required_columns = ["TCRB_CDR3", "Epitope"]
+            prediction_columns = ["TCRB_CDR3", "Epitope"]
         else:
             df_tcrs = self.filter_by_length(df_tcrs, "TCRA_CDR3", None, "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRA_CDR3"].isna()) & (df_tcrs["TCRA_CDR3"] != "")]
-            required_columns = ["TCRA_CDR3", "Epitope"]
+            prediction_columns = ["TCRA_CDR3", "Epitope"]
         df_tcrs = df_tcrs[required_columns]
-        df_tcrs.drop_duplicates(inplace=True, keep="first")
+        df_tcrs.drop_duplicates(subset=prediction_columns, inplace=True, keep="first")
         df_tcrs = df_tcrs.reset_index(drop=True)
         return df_tcrs
     
