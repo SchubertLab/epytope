@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.append('../..')
 
 from epytope.Core import Peptide, Allele
@@ -25,4 +26,11 @@ results.to_csv("out_single.csv")
 
 predictor = TCRSpecificityPredictorFactory("panpep")
 results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/PanPep", conda="panpen", pairwise=True)
+
+predictor = TCRSpecificityPredictorFactory("teinet")
+results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/TEINet", conda="teinet", model="/home/icb/anna.chernysheva/TEINet/results/teinet_data.pth", pairwise=False)
+results.to_csv("out_single.csv")
+
+predictor = TCRSpecificityPredictorFactory("teinet")
+results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/TEINet", conda="teinet", model="/home/icb/anna.chernysheva/TEINet/results/teinet_data.pth", pairwise=True)
 results.to_csv("out_pair.csv")

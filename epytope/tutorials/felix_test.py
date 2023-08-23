@@ -23,6 +23,7 @@ for name, version in TCRSpecificityPredictorFactory.available_methods().items():
 reqs = {
     #"ergo-i": {"repository": "../../../ERGO", "conda": "ergo"},
     "panpep": {"repository": "/home/icb/anna.chernysheva/PanPep", "conda": "panpen"}
+    "teinet": {"repository": "/home/icb/anna.chernysheva/TEINet", "conda": "teinet", "model" : "/home/icb/anna.chernysheva/TEINet/results/teinet_data.pth"}
 }
 
 choices = {
