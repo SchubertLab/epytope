@@ -795,18 +795,16 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
-        results_predictor = pd.read_csv(filenames[1])
+        results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "CDR3", "Epitope", "Predict", "Score"])
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
         if model_type == "B":
             joining_list = ["VDJ_cdr3", "Epitope"]
             required_columns = ["VDJ_cdr3", "Epitope", "Score"]
-            results_predictor = results_predictor.rename(columns={"TCRB_CDR3": "VDJ_cdr3",
-                                                              "Probability (predicted as a positive sample)": "Score"})
+            results_predictor = results_predictor.rename(columns={"CDR3": "VDJ_cdr3"})
         else:
-            joining_list = ["VDJ_cdr3", "Epitope"]
-            required_columns = ["VDJ_cdr3", "Epitope", "Score"]
-            results_predictor = results_predictor.rename(columns={"TCRA_CDR3": "VJ_cdr3",
-                                                              "Probability (predicted as a positive sample)": "Score"})
+            joining_list = ["VJ_cdr3", "Epitope"]
+            required_columns = ["VJ_cdr3", "Epitope", "Score"]
+            results_predictor = results_predictor.rename(columns={"CDR3": "VJ_cdr3"})
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
