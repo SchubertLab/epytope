@@ -65,7 +65,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         self.clean_up(tmp_folder, filenames)
         return df_results
 
-    def format_tcr_data(self, tcrs, epitopes, pairwise):
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         raise NotImplementedError
 
     def save_tmp_files(self, data, **kwargs):
@@ -124,7 +124,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
 
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise):
+    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         raise NotImplementedError
 
     def transform_output(self, result_df, tcrs, epitopes, pairwise, joining_list):
