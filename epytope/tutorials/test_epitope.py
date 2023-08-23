@@ -24,5 +24,5 @@ results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.rec
 results.to_csv("out_single.csv")
 
 predictor = TCRSpecificityPredictorFactory("dlptcr")
-results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/DLptCR", conda="dltcr", pairwise=True)
+results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/DLpTCR", conda="dltcr", pairwise=True)
 results.to_csv("out_pair.csv")
