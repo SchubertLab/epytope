@@ -785,7 +785,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         cmd_epitope = f'python -c "{"; ".join(cmd_epitope)}"'
         return cmd_epitope
     
-    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         cmds = []
         if conda is not None:
             cmds.append(f"conda activate {conda}")
