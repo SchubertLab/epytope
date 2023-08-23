@@ -760,7 +760,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             df_tcrs = self.filter_by_length(df_tcrs, None, "TCRB_CDR3", "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRB_CDR3"].isna()) & (df_tcrs["TCRB_CDR3"] != "")]
         else:
-            df_tcrs = self.filter_by_length(df_tcrs, None, "TCRA_CDR3", "Epitope")
+            df_tcrs = self.filter_by_length(df_tcrs, "TCRA_CDR3", None, "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRA_CDR3"].isna()) & (df_tcrs["TCRA_CDR3"] != "")]
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(inplace=True, keep="first")
@@ -795,13 +795,18 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
     def format_results(self, filenames, tcrs, epitopes, pairwise):
-        results_predictor = pd.read_csv(filenames[1], skiprows=15, index_col=False)
-        results_predictor = results_predictor[:-1]
-        results_predictor = results_predictor.rename(columns={"CDR3b": "VDJ_cdr3",
-                                                              "epitope": "Epitope",
-                                                              "predict_proba": "Score"})
-        required_columns = ["VDJ_cdr3", "Epitope", "Score"]  # TODO: Does the model use MHC, if so add here!
-        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor = pd.read_csv(filenames[1])
+        model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
+        if model_type == "B":
+            joining_list = ["VDJ_cdr3", "Epitope"]
+            required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+            results_predictor = results_predictor.rename(columns={"TCRB_CDR3": "VDJ_cdr3",
+                                                              "Probability (predicted as a positive sample)": "Score"})
+        else:
+            joining_list = ["VDJ_cdr3", "Epitope"]
+            required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+            results_predictor = results_predictor.rename(columns={"TCRA_CDR3": "VJ_cdr3",
+                                                              "Probability (predicted as a positive sample)": "Score"})
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
