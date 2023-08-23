@@ -795,6 +795,10 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+        try:
+            shutil.copy(filenames[1], "/home/icb/anna.chernysheva/epytope/epytope/tutorials/try.csv")
+        except EnvironmentError:
+            print("Unable to copy file")
         results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "CDR3", "Epitope", "Predict", "Score"])
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
         if model_type == "B":
