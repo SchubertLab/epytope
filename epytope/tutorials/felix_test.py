@@ -1,5 +1,5 @@
 import sys
-sys.path.append('../../')
+sys.path.append('../..')
 
 from epytope.Core import Peptide, Allele
 from epytope.Core import Peptide, Allele, TCREpitope, ImmuneReceptorChain, ImmuneReceptor
@@ -21,7 +21,8 @@ for name, version in TCRSpecificityPredictorFactory.available_methods().items():
     print(name, ",".join(version))
 
 reqs = {
-    "ergo-i": {"repository": "../../../ERGO", "conda": "ergo"},
+    #"ergo-i": {"repository": "../../../ERGO", "conda": "ergo"},
+    "teinet": {"repository": "/home/icb/anna.chernysheva/TEINet", "conda": "teinet", "model" : "/home/icb/anna.chernysheva/TEINet/results/teinet_data.pth"}
 }
 
 choices = {
