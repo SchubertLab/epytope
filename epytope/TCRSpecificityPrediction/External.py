@@ -805,6 +805,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             joining_list = ["VJ_cdr3", "Epitope"]
             required_columns = ["VJ_cdr3", "Epitope", "Score"]
             results_predictor = results_predictor.rename(columns={"CDR3": "VJ_cdr3"})
+        print(results_predictor)
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
