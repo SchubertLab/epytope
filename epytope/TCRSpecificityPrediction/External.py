@@ -794,7 +794,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         os.chdir(os.path.join(repository, "code"))
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise):
+    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
         if model_type == "B":
