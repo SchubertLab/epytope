@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/icb/anna.chernysheva/epytope')
+sys.path.append('../..')
 
 from epytope.Core import Peptide, Allele
 from epytope.Core import Peptide, Allele, TCREpitope, ImmuneReceptorChain, ImmuneReceptor
@@ -14,15 +14,15 @@ epitope_1 = TCREpitope(peptide=peptide, allele=allele)
 
 epitope_2 = TCREpitope(peptide="EAAGIGILTV", allele=None)
 
-path_data = '/home/icb/anna.chernysheva/McPAS-TCR.csv'
+path_data = '../../../McPAS-TCR.csv'
 tcr_repertoire = IRDatasetAdapterFactory("mcpas-tcr")
 
 tcr_repertoire.from_path(path_data)
 
-predictor = TCRSpecificityPredictorFactory("ergo-I")
-results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/ERGO", conda="ergo", pairwise=False)
+predictor = TCRSpecificityPredictorFactory("dlptcr")
+results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/DLpTCR", conda="dltcr", pairwise=False)
 results.to_csv("out_single.csv")
 
-predictor = TCRSpecificityPredictorFactory("ergo-I")
-results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/ERGO", conda="ergo", pairwise=True)
+predictor = TCRSpecificityPredictorFactory("dlptcr")
+results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/DLptCR", conda="dltcr", pairwise=True)
 results.to_csv("out_pair.csv")

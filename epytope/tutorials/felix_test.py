@@ -1,5 +1,5 @@
 import sys
-sys.path.append('../../')
+sys.path.append('../..')
 
 from epytope.Core import Peptide, Allele
 from epytope.Core import Peptide, Allele, TCREpitope, ImmuneReceptorChain, ImmuneReceptor
@@ -21,11 +21,13 @@ for name, version in TCRSpecificityPredictorFactory.available_methods().items():
     print(name, ",".join(version))
 
 reqs = {
-    "ergo-i": {"repository": "../../../ERGO", "conda": "ergo"},
+    #"ergo-i": {"repository": "../../../ERGO", "conda": "ergo"},
+    "dlptcr": {"repository": "/home/icb/anna.chernysheva/DLpTCR", "conda": "dltcr"}
 }
 
 choices = {
-    "ergo-i": {"model_type": ["lstm", "ae"], "cuda": ["gpu", "cpu"]}
+    "ergo-i": {"model_type": ["lstm", "ae"], "cuda": ["gpu", "cpu"]},
+    "dlptcr": {"model_type": ["A", "B"]} # maybe also AB?
 }
 
 epitopes_pairwise = [epitope_1, epitope_2]
