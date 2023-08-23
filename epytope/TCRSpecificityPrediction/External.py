@@ -764,6 +764,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             df_tcrs = df_tcrs[(~df_tcrs["TCRA_CDR3"].isna()) & (df_tcrs["TCRA_CDR3"] != "")]
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(inplace=True, keep="first")
+        print(df_tcrs)
         return df_tcrs
     
     def save_tmp_files(self, data, **kwargs):
