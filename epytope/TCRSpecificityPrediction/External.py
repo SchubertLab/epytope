@@ -749,7 +749,6 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             "VJ_cdr3": "TCRA_CDR3",
             "VDJ_cdr3": "TCRB_CDR3"
         }
-        required_columns = list(rename_columns.values()) + ["Epitope"]
         df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
         if pairwise:
             df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
@@ -759,9 +758,11 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         if model_type == "B":
             df_tcrs = self.filter_by_length(df_tcrs, None, "TCRB_CDR3", "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRB_CDR3"].isna()) & (df_tcrs["TCRB_CDR3"] != "")]
+            required_columns = ["TCRB_CDR3", "Epitope"]
         else:
             df_tcrs = self.filter_by_length(df_tcrs, "TCRA_CDR3", None, "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRA_CDR3"].isna()) & (df_tcrs["TCRA_CDR3"] != "")]
+            required_columns = ["TCRA_CDR3", "Epitope"]
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(inplace=True, keep="first")
         df_tcrs = df_tcrs.reset_index(drop=True)
@@ -773,10 +774,6 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         path_in = os.path.join(tmp_folder.name, f"{self.name}_input.xlsx")
         path_out = os.path.join(tmp_folder.name, f"TCR{model_type}_pred.csv")
         data.to_excel(path_in)
-        try:
-            shutil.copy(path_in, "/home/icb/anna.chernysheva/epytope/epytope/tutorials/try1.xlsx")
-        except EnvironmentError:
-            print("Unable to copy file")
         return [path_in, path_out], tmp_folder
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
@@ -800,10 +797,6 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
-        try:
-            shutil.copy(filenames[1], "/home/icb/anna.chernysheva/epytope/epytope/tutorials/try.csv")
-        except EnvironmentError:
-            print("Unable to copy file")
         results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "CDR3", "Epitope", "Predict", "Score"])
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
         if model_type == "B":
@@ -814,7 +807,6 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             joining_list = ["VJ_cdr3", "Epitope"]
             required_columns = ["VJ_cdr3", "Epitope", "Score"]
             results_predictor = results_predictor.rename(columns={"CDR3": "VJ_cdr3"})
-        print(results_predictor)
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
