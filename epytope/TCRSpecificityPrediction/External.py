@@ -9,6 +9,7 @@
 
 import abc
 import os
+import sys
 import shutil
 
 import pandas as pd
@@ -52,9 +53,13 @@ class ARepoTCRSpecificityPrediction(ACmdTCRSpecificityPrediction):
         cmds = []
         if cmd_prefix is not None:
             cmds.append(cmd_prefix)
-        if conda is not None:
-            cmds.append(f"conda activate {conda}")
-        cmds.append(f"{interpreter} {repository}/{cmd}")
+        cmd_conda = ""
+        if conda:
+            if "win" in sys.platform:
+                cmd_conda = f"conda activate {conda} &&"
+            else:
+                cmd_conda = f"conda run -n {conda}"
+        cmds.append(f"{cmd_conda} {interpreter} {repository}/{cmd}")
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
 

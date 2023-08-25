@@ -9,6 +9,7 @@
 """
 
 import os
+import sys
 import subprocess
 import tempfile
 import pandas as pd
@@ -91,10 +92,14 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         cmds = []
         if cmd_prefix is not None:
             cmds.append(cmd_prefix)
-        if conda is not None:
-            cmds.append(f"conda activate {conda}")
+        cmd_conda = ""
+        if conda:
+            if "win" in sys.platform:
+                cmd_conda = f"conda activate {conda} &&"
+            else:
+                cmd_conda = f"conda run -n {conda}"
         cmd = f"import pkgutil; import sys; print(pkgutil.get_loader('{name}').get_filename())"
-        cmd = f'{interpreter} -c "{cmd}"'
+        cmd = f'{cmd_conda} {interpreter} -c "{cmd}"'
         cmds.append(cmd)
         cmd = " && ".join(cmds)
         try:
@@ -115,12 +120,17 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         cmds = []
         if cmd_prefix is not None:
             cmds.append(cmd_prefix)
-        if conda is not None:
-            cmds.append(f"conda activate {conda}")
+
+        cmd_conda = ""
+        if conda:
+            if "win" in sys.platform:
+                cmd_conda = f"conda activate {conda} &&"
+            else:
+                cmd_conda = f"conda run -n {conda}"
         if "m_cmd" in kwargs and not kwargs["m_cmd"]:
-            cmds.append(f"{interpreter} {cmd}")
+            cmds.append(f"{cmd_conda} {interpreter} {cmd}")
         else:
-            cmds.append(f"{interpreter} -m {cmd}")
+            cmds.append(f"{cmd_conda} {interpreter} -m {cmd}")
 
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
