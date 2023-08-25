@@ -27,7 +27,7 @@ reqs = {
 
 choices = {
     "ergo-i": {"model_type": ["lstm", "ae"], "cuda": ["gpu", "cpu"]},
-    "dlptcr": {"model_type": ["A", "B"]} # maybe also AB?
+    "dlptcr": {"model_type": ["A", "B", "AB"]}
 }
 
 epitopes_pairwise = [epitope_1, epitope_2]
