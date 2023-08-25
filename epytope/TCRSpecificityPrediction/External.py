@@ -760,10 +760,17 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             df_tcrs = self.filter_by_length(df_tcrs, None, "TCRB_CDR3", "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRB_CDR3"].isna()) & (df_tcrs["TCRB_CDR3"] != "")]
             prediction_columns = ["TCRB_CDR3", "Epitope"]
-        else:
+        elif model_type == "A":
             df_tcrs = self.filter_by_length(df_tcrs, "TCRA_CDR3", None, "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRA_CDR3"].isna()) & (df_tcrs["TCRA_CDR3"] != "")]
             prediction_columns = ["TCRA_CDR3", "Epitope"]
+        elif model_type == "AB":
+            df_tcrs = self.filter_by_length(df_tcrs, "TCRA_CDR3", "TCRB_CDR3", "Epitope")
+            df_tcrs = df_tcrs[(~df_tcrs["TCRB_CDR3"].isna()) & (df_tcrs["TCRB_CDR3"] != "")]
+            df_tcrs = df_tcrs[(~df_tcrs["TCRA_CDR3"].isna()) & (df_tcrs["TCRA_CDR3"] != "")]
+            prediction_columns = ["TCRB_CDR3", "TCRA_CDR3", "Epitope"]
+        else:
+            raise TypeError(f"Please specify correct model_type: A, B or AB")
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(subset=prediction_columns, inplace=True, keep="first")
         df_tcrs = df_tcrs.reset_index(drop=True)
@@ -798,16 +805,23 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
-        results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "CDR3", "Epitope", "Predict", "Score"])
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
         if model_type == "B":
+            results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "CDR3", "Epitope", "Predict", "Score"])
             joining_list = ["VDJ_cdr3", "Epitope"]
             required_columns = ["VDJ_cdr3", "Epitope", "Score"]
             results_predictor = results_predictor.rename(columns={"CDR3": "VDJ_cdr3"})
-        else:
+        elif model_type == "A":
+            results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "CDR3", "Epitope", "Predict", "Score"])
             joining_list = ["VJ_cdr3", "Epitope"]
             required_columns = ["VJ_cdr3", "Epitope", "Score"]
             results_predictor = results_predictor.rename(columns={"CDR3": "VJ_cdr3"})
+        else:
+            results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "CDR3", "Epitope", "Predict", "ScoreA", "ScoreB"])
+            results_predictor["Binding"] = results_predictor['Predict'].str.split(' ').str[0]
+            print(results_predictor)
+            joining_list = ["VDJ_cdr3", "VJ_cdr3", "Epitope"]
+            required_columns = ["VDJ_cdr3", "VJ_cdr3", "Epitope", "Score"]
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
