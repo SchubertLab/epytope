@@ -444,9 +444,9 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
 
     def format_tcr_data(self, tcrs, epitopes, pairwise):
         rename_columns = {
-            "VDJ_cdr3": "cdr3"
+            "VDJ_cdr3": "tcr"
         }
-        required_columns = list(rename_columns.values()) + ["epitope"]
+        required_columns = list(rename_columns.values()) + ["antigen"]
         df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
         if pairwise:
             df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
@@ -456,9 +456,9 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
         df_tcrs = self.filter_by_length(df_tcrs, None, "tcr", "antigen")
         df_tcrs = df_tcrs[(~df_tcrs["tcr"].isna()) & (df_tcrs["tcr"] != "")]
         df_tcrs.drop_duplicates(inplace=True, keep="first")
+        df_tcrs = df_tcrs[required_columns]
         df_tcrs["label"] = 1
         df_tcrs.iat[0, df_tcrs.columns.get_loc("label")] = 0
-        df_tcrs = df_tcrs[required_columns]
         return df_tcrs
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
