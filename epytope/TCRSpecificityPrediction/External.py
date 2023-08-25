@@ -756,6 +756,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
+        print(model_type)
         if model_type == "B":
             df_tcrs = self.filter_by_length(df_tcrs, None, "TCRB_CDR3", "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRB_CDR3"].isna()) & (df_tcrs["TCRB_CDR3"] != "")]
