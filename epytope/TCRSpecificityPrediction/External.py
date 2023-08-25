@@ -55,7 +55,7 @@ class ARepoTCRSpecificityPrediction(ACmdTCRSpecificityPrediction):
             cmds.append(cmd_prefix)
         cmd_conda = ""
         if conda:
-            if "win" in sys.platform:
+            if sys.platform.startswith("win"):
                 cmd_conda = f"conda activate {conda} &&"
             else:
                 cmd_conda = f"conda run -n {conda}"
