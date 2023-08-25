@@ -658,6 +658,11 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     __epitope_length = (0, 30)  # TODO found no info in paper
     __repo = "https://github.com/louzounlab/ERGO.git"
 
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3b"
+    }
+
+
     @property
     def name(self):
         return self.__name
