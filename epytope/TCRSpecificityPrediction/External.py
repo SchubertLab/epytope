@@ -756,7 +756,6 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
-        print(model_type)
         if model_type == "B":
             df_tcrs = self.filter_by_length(df_tcrs, None, "TCRB_CDR3", "Epitope")
             df_tcrs = df_tcrs[(~df_tcrs["TCRB_CDR3"].isna()) & (df_tcrs["TCRB_CDR3"] != "")]
@@ -775,7 +774,6 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(subset=prediction_columns, inplace=True, keep="first")
         df_tcrs = df_tcrs.reset_index(drop=True)
-        print(df_tcrs)
         return df_tcrs
     
     def save_tmp_files(self, data, **kwargs):
@@ -806,21 +804,6 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         os.chdir(os.path.join(repository, "code"))
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
-    def exec_cmd(self, cmd, tmp_path_out):
-        try:
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,  # PIPE,
-                                 stderr=subprocess.STDOUT)
-            stdo, stde = p.communicate()
-            stdr = p.returncode
-            if stdr > 0:
-                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
-            if not os.path.exists(tmp_path_out) or os.path.getsize(tmp_path_out) == 0:
-                raise RuntimeError(
-                    "Unsuccessful execution of " + cmd + " (empty output file) with output:\n" +
-                    stdo.decode())
-        except Exception as e:
-            raise RuntimeError(e)
-
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
         if model_type == "B":
@@ -837,7 +820,6 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "VJ_cdr3", "VDJ_cdr3", "Epitope", "Predict", "ScoreA", "ScoreB"])
             results_predictor["Score"] = results_predictor["Predict"].str.split(" ").str[0]
             results_predictor["Score"].replace({"False": 0, "True": 1}, inplace=True)
-            print(results_predictor)
             joining_list = ["VDJ_cdr3", "VJ_cdr3", "Epitope"]
             required_columns = ["VDJ_cdr3", "VJ_cdr3", "Epitope", "Score"]
         results_predictor = results_predictor[required_columns]
