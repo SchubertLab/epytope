@@ -835,8 +835,8 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             results_predictor = results_predictor.rename(columns={"CDR3": "VJ_cdr3"})
         else:
             results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "VJ_cdr3", "VDJ_cdr3", "Epitope", "Predict", "ScoreA", "ScoreB"])
-            results_predictor["Binding"] = results_predictor['Predict'].str.split(' ').str[0]
-            results_predictor["Binding"].replace({"False": 0, "True": 1}, inplace=True)
+            results_predictor["Score"] = results_predictor["Predict"].str.split(" ").str[0]
+            results_predictor["Score"].replace({"False": 0, "True": 1}, inplace=True)
             print(results_predictor)
             joining_list = ["VDJ_cdr3", "VJ_cdr3", "Epitope"]
             required_columns = ["VDJ_cdr3", "VJ_cdr3", "Epitope", "Score"]
