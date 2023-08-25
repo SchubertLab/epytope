@@ -413,3 +413,439 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
         joining_list = ["VDJ_cdr3", "Epitope"]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
+
+
+class AttnTAP(ARepoTCRSpecificityPrediction):
+    """
+    Author: Xu et al.
+    Paper: https://www.frontiersin.org/articles/10.3389/fgene.2022.942491/full
+    Repo: https://github.com/Bioinformatics7181/AttnTAP
+    """
+    __name = "AttnTAP"
+    __version = ""
+    __trc_length = (6, 30)
+    __epitope_length = (0, 30)
+    __repo = "https://github.com/Bioinformatics7181/AttnTAP.git"
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__trc_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        rename_columns = {
+            "VDJ_cdr3": "tcr"
+        }
+        required_columns = list(rename_columns.values()) + ["antigen"]
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "antigen"})
+        df_tcrs = self.filter_by_length(df_tcrs, None, "tcr", "antigen")
+        df_tcrs = df_tcrs[(~df_tcrs["tcr"].isna()) & (df_tcrs["tcr"] != "")]
+        df_tcrs.drop_duplicates(inplace=True, keep="first")
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs["label"] = 1
+        df_tcrs.iat[0, df_tcrs.columns.get_loc("label")] = 0
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        model = "cv_model_0_vdjdb_0" if "model" not in kwargs else kwargs["model"]
+        repository = kwargs["repository"]
+        model_filepath = os.path.join(repository, "Models", f"{model}.pt")
+        path_script = os.path.join("Codes", "AttnTAP_test.py")
+        return f"{path_script} --input_file {filenames[0]} --output_file {filenames[1]} --load_model_file {model_filepath}"
+
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1])
+        results_predictor = results_predictor.rename(columns={"tcr": "VDJ_cdr3",
+                                                              "antigen": "Epitope",
+                                                              "prediction": "Score"})
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor = results_predictor[required_columns]
+        results_predictor = results_predictor.drop_duplicates()
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+      
+class TEIM(ARepoTCRSpecificityPrediction):
+    """
+    Author: Peng et al.
+    Paper: https://www.nature.com/articles/s42256-023-00634-4
+    Repo: https://github.com/pengxingang/TEIM
+    """
+    __name = "TEIM"
+    __version = ""
+    __trc_length = (10, 20)
+    __epitope_length = (8, 12)
+    __repo = "https://github.com/pengxingang/TEIM.git"
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__trc_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        rename_columns = {
+            "VDJ_cdr3": "cdr3"
+        }
+        required_columns = list(rename_columns.values()) + ["epitope"]
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope"})
+        df_tcrs = self.filter_by_length(df_tcrs, None, "cdr3", "epitope")
+        df_tcrs = df_tcrs[(~df_tcrs["cdr3"].isna()) & (df_tcrs["cdr3"] != "")]
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs.drop_duplicates(inplace=True, keep="first")
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        path_script = os.path.join("scripts", "inference_seq.py")
+        return f"{path_script}"
+
+    def save_tmp_files(self, data, **kwargs):
+        repository = kwargs["repository"]
+        path_in = os.path.join(repository, "inputs", "inputs_bd.csv")
+        path_out = os.path.join(repository, "outputs", "sequence_level_binding.csv")
+        data.to_csv(path_in)
+        return [path_in, path_out], None
+    
+    def clean_up(self, tmp_folder, files=None):
+        for file in files:
+            if os.path.exists(file):
+                os.remove(file)
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1])
+        results_predictor = results_predictor.rename(columns={"cdr3": "VDJ_cdr3",
+                                                              "epitope": "Epitope",
+                                                              "binding": "Score"})
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor = results_predictor[required_columns]
+        results_predictor = results_predictor.drop_duplicates()
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+
+class BERTrand(ARepoTCRSpecificityPrediction):
+    """
+    Author: Myronov et al.
+    Paper: https://www.biorxiv.org/content/biorxiv/early/2023/06/13/2023.06.12.544613.full.pdf?%3Fcollection=
+    Repo: https://github.com/SFGLab/bertrand
+    """
+    __name = "BERTrand"
+    __version = ""
+    __tcr_length = (10, 20)
+    __epitope_length = (8, 11)
+    __repo = "https://github.com/SFGLab/bertrand.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3b"
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        required_columns = list(self._rename_columns.values()) + ["peptide_seq"]
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide_seq"})
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "peptide_seq")
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["y"] = 1
+        df_tcrs.iat[0, df_tcrs.columns.get_loc("y")] = 0
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        model = kwargs["model"]
+        if model is None or model == "" or not os.path.isdir(model):
+            raise TypeError(f"Please download and unzip model from git repository or https://drive.google.com/file/d/1FywbDbzhhYbwf99MdZrpYQEbXmwX9Zxm/view?usp=sharing.")
+        return f"bertrand.model.inference -i={filenames[0]} -m={model} -o={filenames[1]}"
+    
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        os.chdir(repository)
+        cmds = []
+        if cmd_prefix is not None:
+            cmds.append(cmd_prefix)
+        if conda is not None:
+            cmds.append(f"conda activate {conda}")
+        cmds.append(f"python -m {cmd}")
+        self.exec_cmd(" && ".join(cmds), filenames[1])
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1])
+        input_predictor = pd.read_csv(filenames[0])
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor[joining_list] = input_predictor[["CDR3b", "peptide_seq"]]
+        results_predictor = results_predictor.rename(columns={"0": "Score"})
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        results_predictor = results_predictor[required_columns]
+
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+  
+class Ergo1(ARepoTCRSpecificityPrediction):
+    """
+    Author: Springer et al.
+    Paper: https://www.frontiersin.org/articles/10.3389/fimmu.2020.01803/full
+    Repo: https://github.com/louzounlab/ERGO
+    """
+    __name = "ERGO-I"
+    __version = ""
+    __tcr_length = (0, 30)  # TODO found no info in paper
+    __epitope_length = (0, 30)  # TODO found no info in paper
+    __repo = "https://github.com/louzounlab/ERGO.git"
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        required_columns = list(self._rename_columns.values()) + ["epitope"]
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope"})
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
+        return df_tcrs
+    
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
+        path_out = os.path.join(tmp_folder.name, f"{self.name}_output.csv")
+        data.to_csv(path_in, index=False, header=False)
+        return [path_in, path_out], tmp_folder
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        model_type = "lstm" if "model_type" not in kwargs else kwargs["model_type"]
+        cuda = "cpu" if "cuda" not in kwargs else kwargs["cuda"]
+        repository = kwargs["repository"]
+        model = "lstm_vdjdb1" if "model" not in kwargs else kwargs["model"]
+        model_filepath = os.path.join(repository, "models", f"{model}.pt")
+        print(repository)
+        print(os.getcwd())
+        return f"ERGO.py predict {model_type} vdjdb specific {cuda} --model_file={model_filepath} --train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1], sep='\t', names = ["VDJ_cdr3", "Epitope", "Score"], header=None)
+        joining_list = ["Epitope", "VDJ_cdr3"]
+        results_predictor = results_predictor[joining_list + ["Score"]]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+
+class TEINet(ARepoTCRSpecificityPrediction):
+    """
+    Author: Jiang et al.
+    Paper: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008814
+    Repo: https://github.com/jiangdada1221/TEINet
+    """
+    __name = "TEINet"
+    __version = ""
+    __tcr_length = (5, 30)
+    __epitope_length = (7, 15)
+    __repo = "https://github.com/jiangdada1221/TEINet.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3.beta"
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        required_columns = list(self._rename_columns.values()) + ["Epitope"]
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3.beta", "Epitope")
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3.beta"].isna()) & (df_tcrs["CDR3.beta"] != "")]
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["Label"] = 1
+        df_tcrs.iat[0, df_tcrs.columns.get_loc("Label")] = 0
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        device = "cuda:0" if "cuda" not in kwargs else kwargs["cuda"]
+        model = kwargs["model"]
+        if model is None or model == "" or not os.path.isfile(model):#how to check better?
+            raise TypeError(f"Please download model from git repository or https://drive.google.com/file/d/12pVozHhRcGyMBgMlhcjgcclE3wlrVO32/view?usp=sharing.")
+        return f"predict.py --dset_path {filenames[0]} --save_prediction_path {filenames[1]} --use_column CDR3.beta --model_path {model} --device {device}"
+    
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1], header=None, names=["Score", "Label"])
+        input_predictor = pd.read_csv(filenames[0])
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor[joining_list] = input_predictor[["CDR3.beta", "Epitope"]]
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        results_predictor = results_predictor[required_columns]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+      
+
+class PanPep(ARepoTCRSpecificityPrediction):
+    """
+    Author: Gao et al.
+    Paper: https://www.nature.com/articles/s42256-023-00619-3
+    Repo: https://github.com/bm2-lab/PanPep
+    """
+    __name = "PanPep"
+    __version = ""
+    __tcr_length = (0, 30) #TODO no info in paper found
+    __epitope_length = (0, 30) #TODO no info in paper found
+    __repo = "https://github.com/IdoSpringer/ERGO-II.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3"
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise):
+        required_columns = list(self._rename_columns.values()) + ["Peptide"]
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "Peptide"})
+        #df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "Peptide") #TODO no info in paper found
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3"].isna()) & (df_tcrs["CDR3"] != "")]
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs = df_tcrs.drop_duplicates()
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        return f"PanPep.py --learning_setting zero-shot --input {filenames[0]} --output {filenames[1]}"
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise):
+        results_predictor = pd.read_csv(filenames[1])
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor = results_predictor.rename(columns={"CDR3": "VDJ_cdr3",
+                                                              "Peptide": "Epitope"})
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        results_predictor = results_predictor[required_columns]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
