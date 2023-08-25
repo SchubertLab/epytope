@@ -18,6 +18,7 @@ path_data = '../../../McPAS-TCR.csv'
 tcr_repertoire = IRDatasetAdapterFactory("mcpas-tcr")
 
 tcr_repertoire.from_path(path_data)
+tcr_repertoire.receptors = tcr_repertoire.receptors[:20]
 
 predictor = TCRSpecificityPredictorFactory("dlptcr")
 results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/DLpTCR", conda="dltcr", model_type="AB", pairwise=False)

@@ -774,6 +774,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(subset=prediction_columns, inplace=True, keep="first")
         df_tcrs = df_tcrs.reset_index(drop=True)
+        print(df_tcrs)
         return df_tcrs
     
     def save_tmp_files(self, data, **kwargs):
