@@ -804,6 +804,17 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         os.chdir(os.path.join(repository, "code"))
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
+    def exec_cmd(self, cmd, tmp_path_out):
+        try:
+            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,  # PIPE,
+                                 stderr=subprocess.STDOUT)
+            stdo, stde = p.communicate()
+            stdr = p.returncode
+            if stdr > 0:
+                raise RuntimeError("Unsuccessful execution of " + cmd + " (EXIT!=0) with output:\n" + stdo.decode())
+        except Exception as e:
+            raise RuntimeError(e)
+
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
         if model_type == "B":
