@@ -658,6 +658,10 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     __epitope_length = (0, 30)  # TODO found no info in paper
     __repo = "https://github.com/louzounlab/ERGO.git"
 
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3b"
+    }
+
     @property
     def name(self):
         return self.__name
@@ -705,8 +709,6 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         repository = kwargs["repository"]
         model = "lstm_vdjdb1" if "model" not in kwargs else kwargs["model"]
         model_filepath = os.path.join(repository, "models", f"{model}.pt")
-        print(repository)
-        print(os.getcwd())
         return f"ERGO.py predict {model_type} vdjdb specific {cuda} --model_file={model_filepath} --train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
 
     def format_results(self, filenames, tcrs, epitopes, pairwise):
