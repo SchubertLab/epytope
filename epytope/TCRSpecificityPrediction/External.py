@@ -790,7 +790,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
                        "from DLpTCR_server import *",
                        "import os",
                        f"error_info,TCRA_cdr3,TCRB_cdr3,Epitope = deal_file('''{filenames[0]}''','''{tmp_folder.name}/''','''{model_type}''')",
-                       f"output_file_path = save_outputfile('''{tmp_folder.name}/''', '''{model_type}''', '''{filenames[0]}''',TCRA_cdr3,TCRB_cdr3,Epitope)"
+                       f"output_file_path = save_outputfile('''{tmp_folder.name}''', '''{model_type}''', '''{filenames[0]}''',TCRA_cdr3,TCRB_cdr3,Epitope)"
                        ]
         cmd_epitope = f'python -c "{"; ".join(cmd_epitope)}"'
         return cmd_epitope
