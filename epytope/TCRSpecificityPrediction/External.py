@@ -614,7 +614,6 @@ class BERTrand(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs[required_columns]
         df_tcrs = df_tcrs.drop_duplicates()
         df_tcrs["y"] = 1
-        df_tcrs.iat[0, df_tcrs.columns.get_loc("y")] = 0
         return df_tcrs
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
