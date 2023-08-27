@@ -312,7 +312,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
         df_tcrs["HLA"] = df_tcrs["HLA"].str[4:]  # TODO test what happens if no HLA is provided / do we need HLA?
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(inplace=True, keep="first")
-        if df_tcrs.shape[0]:
+        if df_tcrs.shape[0] == 1:
             df_tcrs = pd.concat([df_tcrs] * 2).sort_index().reset_index(drop=True)
         df_tcrs.iat[0, df_tcrs.columns.get_loc("binder")] = 0
         return df_tcrs
