@@ -769,7 +769,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
             df_tcrs = df_tcrs[(~df_tcrs["TCRA_CDR3"].isna()) & (df_tcrs["TCRA_CDR3"] != "")]
             prediction_columns = ["TCRB_CDR3", "TCRA_CDR3", "Epitope"]
         else:
-            raise TypeError(f"Please specify a correct model_type: A, B or AB")
+            raise ValueError(f"Incorrect {model_type}, please specify a correct model_type: A, B or AB")
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(subset=prediction_columns, inplace=True, keep="first")
         df_tcrs = df_tcrs.reset_index(drop=True)
