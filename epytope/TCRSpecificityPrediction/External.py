@@ -805,7 +805,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
                 cmd_conda = f"conda activate {conda} &&"
             else:
                 cmd_conda = f"conda run -n {conda}"
-        cmds.append(cmd_conda)
+        cmds.append(f"{cmd_conda} {cmd}")
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
