@@ -10,6 +10,7 @@
 import abc
 import os
 import shutil
+import sys
 
 import pandas as pd
 
@@ -793,13 +794,18 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         cmd_epitope = f'python -c "{"; ".join(cmd_epitope)}"'
         return cmd_epitope
     
-    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        cmds = []
-        if conda is not None:
-            cmds.append(f"conda activate {conda}")
-        cmds.append(cmd)
-        repository = kwargs["repository"]
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         os.chdir(os.path.join(repository, "code"))
+        cmds = []
+        if cmd_prefix is not None:
+            cmds.append(cmd_prefix)
+        cmd_conda = ""
+        if conda:
+            if sys.platform.startswith("win"):
+                cmd_conda = f"conda activate {conda} &&"
+            else:
+                cmd_conda = f"conda run -n {conda}"
+        cmds.append(cmd_conda)
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
