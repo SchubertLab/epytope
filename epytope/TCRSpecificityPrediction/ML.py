@@ -127,7 +127,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         raise NotImplementedError
 
-    def transform_output(self, result_df, tcrs, epitopes, pairwise, joining_list):
+    def transform_output(self, result_df, tcrs, epitopes, pairwise, joining_list, **kwargs):
         df_out = tcrs.to_pandas()
         if not pairwise:
             df_out = self.combine_tcrs_epitopes_list(df_out, epitopes)
