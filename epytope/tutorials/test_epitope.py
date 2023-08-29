@@ -1,6 +1,5 @@
 import sys
 import os
-
 sys.path.append('../..')
 
 from epytope.Core import Peptide, Allele
@@ -19,18 +18,13 @@ path_data = '../../../McPAS-TCR.csv'
 tcr_repertoire = IRDatasetAdapterFactory("mcpas-tcr")
 
 tcr_repertoire.from_path(path_data)
+tcr_repertoire.receptors = tcr_repertoire.receptors[:20]
 
-predictor = TCRSpecificityPredictorFactory("panpep")
-results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/PanPep", conda="panpen", pairwise=False)
+predictor = TCRSpecificityPredictorFactory("dlptcr")
+results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/DLpTCR", conda="dltcr", model_type="AB", pairwise=False)
 results.to_csv("out_single.csv")
 
-predictor = TCRSpecificityPredictorFactory("panpep")
-results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/PanPep", conda="panpen", pairwise=True)
+predictor = TCRSpecificityPredictorFactory("dlptcr")
+results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/DLpTCR", conda="dltcr", model_type="AB", pairwise=True)
 
-predictor = TCRSpecificityPredictorFactory("teinet")
-results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/home/icb/anna.chernysheva/TEINet", conda="teinet", model="/home/icb/anna.chernysheva/TEINet/results/teinet_data.pth", pairwise=False)
-results.to_csv("out_single.csv")
-
-predictor = TCRSpecificityPredictorFactory("teinet")
-results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/TEINet", conda="teinet", model="/home/icb/anna.chernysheva/TEINet/results/teinet_data.pth", pairwise=True)
 results.to_csv("out_pair.csv")

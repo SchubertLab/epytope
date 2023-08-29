@@ -58,15 +58,15 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
             epitopes = list(set(epitopes))
 
         self.input_check(tcrs, epitopes, pairwise, **kwargs)
-        data = self.format_tcr_data(tcrs, epitopes, pairwise)
+        data = self.format_tcr_data(tcrs, epitopes, pairwise,**kwargs)
         filenames, tmp_folder = self.save_tmp_files(data, **kwargs)
         cmd = self.get_base_cmd(filenames, tmp_folder, interpreter, conda, cmd_prefix, **kwargs)
         self.run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, **kwargs)
-        df_results = self.format_results(filenames, tcrs, epitopes, pairwise)
+        df_results = self.format_results(filenames, tcrs, epitopes, pairwise, **kwargs)
         self.clean_up(tmp_folder, filenames)
         return df_results
 
-    def format_tcr_data(self, tcrs, epitopes, pairwise):
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         raise NotImplementedError
 
     def save_tmp_files(self, data, **kwargs):
@@ -134,10 +134,10 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
 
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise):
+    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         raise NotImplementedError
 
-    def transform_output(self, result_df, tcrs, epitopes, pairwise, joining_list):
+    def transform_output(self, result_df, tcrs, epitopes, pairwise, joining_list, **kwargs):
         df_out = tcrs.to_pandas()
         if not pairwise:
             df_out = self.combine_tcrs_epitopes_list(df_out, epitopes)
