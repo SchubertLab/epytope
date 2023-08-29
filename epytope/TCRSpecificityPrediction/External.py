@@ -11,6 +11,7 @@ import abc
 import os
 import sys
 import shutil
+import sys
 
 import pandas as pd
 
@@ -719,7 +720,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
 
-
+      
 class TEINet(ARepoTCRSpecificityPrediction):
     """
     Author: Jiang et al.
@@ -850,5 +851,124 @@ class PanPep(ARepoTCRSpecificityPrediction):
                                                               "Peptide": "Epitope"})
         required_columns = ["VDJ_cdr3", "Epitope", "Score"]
         results_predictor = results_predictor[required_columns]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+    
+class DLpTCR(ARepoTCRSpecificityPrediction):
+    """
+    Author: Xu et al.
+    Paper: https://pubmed.ncbi.nlm.nih.gov/34415016/
+    Repo: https://github.com/JiangBioLab/DLpTCR
+    """
+    __name = "DLpTCR"
+    __version = ""
+    __trc_length = (8, 20)
+    __epitope_length = (0, 30) #not sure, 9 for analysis, but no more info
+    __repo = "https://github.com/JiangBioLab/DLpTCR"
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__trc_length
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        rename_columns = {
+            "VJ_cdr3": "TCRA_CDR3",
+            "VDJ_cdr3": "TCRB_CDR3"
+        }
+        required_columns = list(rename_columns.values()) + ["Epitope"]
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
+        if model_type == "B":
+            df_tcrs = self.filter_by_length(df_tcrs, None, "TCRB_CDR3", "Epitope")
+            df_tcrs = df_tcrs[(~df_tcrs["TCRB_CDR3"].isna()) & (df_tcrs["TCRB_CDR3"] != "")]
+            prediction_columns = ["TCRB_CDR3", "Epitope"]
+        elif model_type == "A":
+            df_tcrs = self.filter_by_length(df_tcrs, "TCRA_CDR3", None, "Epitope")
+            df_tcrs = df_tcrs[(~df_tcrs["TCRA_CDR3"].isna()) & (df_tcrs["TCRA_CDR3"] != "")]
+            prediction_columns = ["TCRA_CDR3", "Epitope"]
+        elif model_type == "AB":
+            df_tcrs = self.filter_by_length(df_tcrs, "TCRA_CDR3", "TCRB_CDR3", "Epitope")
+            df_tcrs = df_tcrs[(~df_tcrs["TCRB_CDR3"].isna()) & (df_tcrs["TCRB_CDR3"] != "")]
+            df_tcrs = df_tcrs[(~df_tcrs["TCRA_CDR3"].isna()) & (df_tcrs["TCRA_CDR3"] != "")]
+            prediction_columns = ["TCRB_CDR3", "TCRA_CDR3", "Epitope"]
+        else:
+            raise ValueError(f"Incorrect {model_type}. Please specify a correct model_type: A, B or AB")
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs.drop_duplicates(subset=prediction_columns, inplace=True, keep="first")
+        df_tcrs = df_tcrs.reset_index(drop=True)
+        return df_tcrs
+    
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
+        path_in = os.path.join(tmp_folder.name, f"{self.name}_input.xlsx")
+        path_out = os.path.join(tmp_folder.name, f"TCR{model_type}_pred.csv")
+        data.to_excel(path_in)
+        return [path_in, path_out], tmp_folder
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
+        cmd_epitope = ["from Model_Predict_Feature_Extraction import *",
+                       "from DLpTCR_server import *",
+                       f"error_info,TCRA_cdr3,TCRB_cdr3,Epitope = deal_file('''{filenames[0]}''','''{tmp_folder.name}/''','''{model_type}''')",
+                       f"output_file_path = save_outputfile('''{tmp_folder.name}/''', '''{model_type}''', '''{filenames[0]}''',TCRA_cdr3,TCRB_cdr3,Epitope)"
+                       ]
+        cmd_epitope = f'python -c "{"; ".join(cmd_epitope)}"'
+        return cmd_epitope
+    
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        os.chdir(os.path.join(repository, "code"))
+        cmds = []
+        if cmd_prefix is not None:
+            cmds.append(cmd_prefix)
+        cmd_conda = ""
+        if conda:
+            if sys.platform.startswith("win"):
+                cmd_conda = f"conda activate {conda} &&"
+            else:
+                cmd_conda = f"conda run -n {conda}"
+        cmds.append(f"{cmd_conda} {cmd}")
+        self.exec_cmd(" && ".join(cmds), filenames[1])
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+        model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
+        if model_type == "B":
+            results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "CDR3", "Epitope", "Predict", "Score"])
+            joining_list = ["VDJ_cdr3", "Epitope"]
+            required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+            results_predictor = results_predictor.rename(columns={"CDR3": "VDJ_cdr3"})
+        elif model_type == "A":
+            results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "CDR3", "Epitope", "Predict", "Score"])
+            joining_list = ["VJ_cdr3", "Epitope"]
+            required_columns = ["VJ_cdr3", "Epitope", "Score"]
+            results_predictor = results_predictor.rename(columns={"CDR3": "VJ_cdr3"})
+        else:
+            results_predictor = pd.read_csv(filenames[1], header=0, names=["Index", "VJ_cdr3", "VDJ_cdr3", "Epitope", "Predict", "ScoreA", "ScoreB"])
+            results_predictor["Score"] = results_predictor["Predict"].str.split(" ").str[0]
+            results_predictor["Score"].replace({"False": 0, "True": 1}, inplace=True)
+            joining_list = ["VDJ_cdr3", "VJ_cdr3", "Epitope"]
+            required_columns = ["VDJ_cdr3", "VJ_cdr3", "Epitope", "Score"]
+        results_predictor = results_predictor[required_columns]
+        results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
