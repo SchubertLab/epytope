@@ -630,9 +630,14 @@ class BERTrand(ARepoTCRSpecificityPrediction):
         cmds = []
         if cmd_prefix is not None:
             cmds.append(cmd_prefix)
-        if conda is not None:
-            cmds.append(f"conda activate {conda}")
-        cmds.append(f"python -m {cmd}")
+
+        cmd_conda = ""
+        if conda:
+            if sys.platform.startswith("win"):
+                cmd_conda = f"conda activate {conda} &&"
+            else:
+                cmd_conda = f"conda run -n {conda}"
+        cmds.append(f"{cmd_conda} python -m {cmd}")
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
@@ -711,8 +716,6 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         repository = kwargs["repository"]
         model = "lstm_vdjdb1" if "model" not in kwargs else kwargs["model"]
         model_filepath = os.path.join(repository, "models", f"{model}.pt")
-        print(repository)
-        print(os.getcwd())
         return f"ERGO.py predict {model_type} vdjdb specific {cuda} --model_file={model_filepath} " \
                f"--train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
 
@@ -785,6 +788,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
                 f" or specify the path to a model via 'model=<path>'")
         cmd = f"predict.py --dset_path {filenames[0]} --save_prediction_path {filenames[1]} "
         cmd += f"--use_column CDR3.beta --model_path {model} --device {device}"
+        return cmd
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1], header=None, names=["Score", "Label"])
@@ -872,6 +876,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
     __trc_length = (8, 20)
     __epitope_length = (0, 30)  # not sure, 9 for analysis, but no more info
     __repo = "https://github.com/JiangBioLab/DLpTCR"
+    _oldwdir = ""
 
     @property
     def version(self):
@@ -946,6 +951,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         return cmd_epitope
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        self._oldwdir = os.curdir
         os.chdir(os.path.join(repository, "code"))
         cmds = []
         if cmd_prefix is not None:
@@ -984,4 +990,5 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        os.chdir(self._oldwdir)
         return df_out
