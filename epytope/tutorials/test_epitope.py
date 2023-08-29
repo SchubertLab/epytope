@@ -1,4 +1,5 @@
 import sys
+import os
 sys.path.append('../..')
 
 from epytope.Core import Peptide, Allele
@@ -6,7 +7,6 @@ from epytope.Core import Peptide, Allele, TCREpitope, ImmuneReceptorChain, Immun
 from epytope.IO import IRDatasetAdapterFactory
 from epytope.TCRSpecificityPrediction import TCRSpecificityPredictorFactory
 import pandas as pd
-
 
 peptide = Peptide("SYFPEITHI")
 allele = Allele("HLA-A*02:01")
@@ -26,4 +26,5 @@ results.to_csv("out_single.csv")
 
 predictor = TCRSpecificityPredictorFactory("dlptcr")
 results = predictor.predict(tcr_repertoire, [epitope_1, epitope_2], repository="/home/icb/anna.chernysheva/DLpTCR", conda="dltcr", model_type="AB", pairwise=True)
+
 results.to_csv("out_pair.csv")
