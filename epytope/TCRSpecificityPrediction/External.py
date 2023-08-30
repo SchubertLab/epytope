@@ -460,9 +460,11 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs.rename(columns={"Epitope": "antigen"})
         df_tcrs = self.filter_by_length(df_tcrs, None, "tcr", "antigen")
         df_tcrs = df_tcrs[(~df_tcrs["tcr"].isna()) & (df_tcrs["tcr"] != "")]
-        df_tcrs.drop_duplicates(inplace=True, keep="first")
         df_tcrs = df_tcrs[required_columns]
+        df_tcrs.drop_duplicates(inplace=True, keep="first")
         df_tcrs["label"] = 1
+        if df_tcrs.shape[0] == 1:
+            df_tcrs = pd.concat([df_tcrs] * 2).sort_index().reset_index(drop=True)
         df_tcrs.iat[0, df_tcrs.columns.get_loc("label")] = 0
         return df_tcrs
 
@@ -473,6 +475,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
         path_script = os.path.join("Codes", "AttnTAP_test.py")
         cmd = f"{path_script} --input_file {filenames[0]} --output_file {filenames[1]} "
         cmd += f"--load_model_file {model_filepath}"
+        return cmd
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
@@ -482,7 +485,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
         required_columns = ["VDJ_cdr3", "Epitope", "Score"]
         joining_list = ["VDJ_cdr3", "Epitope"]
         results_predictor = results_predictor[required_columns]
-        results_predictor = results_predictor.drop_duplicates()
+        results_predictor = results_predictor.drop_duplicates(subset=joining_list)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
 
