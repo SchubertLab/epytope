@@ -775,6 +775,8 @@ class TEINet(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs[required_columns]
         df_tcrs = df_tcrs.drop_duplicates()
         df_tcrs["Label"] = 1
+        if df_tcrs.shape[0] == 1:
+            df_tcrs = pd.concat([df_tcrs] * 2).sort_index().reset_index(drop=True)
         df_tcrs.iat[0, df_tcrs.columns.get_loc("Label")] = 0
         return df_tcrs
 
@@ -797,6 +799,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
         results_predictor[joining_list] = input_predictor[["CDR3.beta", "Epitope"]]
         required_columns = ["VDJ_cdr3", "Epitope", "Score"]
         results_predictor = results_predictor[required_columns]
+        results_predictor = results_predictor.drop_duplicates(subset=joining_list)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
 
