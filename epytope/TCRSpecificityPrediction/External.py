@@ -817,7 +817,7 @@ class PanPep(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 30)  # TODO no info in paper found
     __epitope_length = (0, 30)  # TODO no info in paper found
-    __repo = "https://github.com/IdoSpringer/ERGO-II.git"
+    __repo = "https://github.com/IdoSpringer/ERGO-II.git" # TODO
 
     _rename_columns = {
         "VDJ_cdr3": "CDR3"
@@ -946,7 +946,9 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
-        cmd_epitope = ["from Model_Predict_Feature_Extraction import *",
+        cmd_epitope = ["import sys",
+                       "sys.path.append('code')",
+                       "from Model_Predict_Feature_Extraction import *",
                        "from DLpTCR_server import *",
                        f"error_info,TCRA_cdr3,TCRB_cdr3,Epitope = deal_file('{filenames[0]}', "
                        f"'{tmp_folder.name}/', '{model_type}')",
@@ -958,7 +960,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         self._oldwdir = os.curdir
-        os.chdir(os.path.join(repository, "code"))
+        os.chdir(repository)
         cmds = []
         if cmd_prefix is not None:
             cmds.append(cmd_prefix)

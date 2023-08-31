@@ -58,7 +58,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
             epitopes = list(set(epitopes))
 
         self.input_check(tcrs, epitopes, pairwise, **kwargs)
-        data = self.format_tcr_data(tcrs, epitopes, pairwise,**kwargs)
+        data = self.format_tcr_data(tcrs, epitopes, pairwise, **kwargs)
         filenames, tmp_folder = self.save_tmp_files(data, **kwargs)
         cmd = self.get_base_cmd(filenames, tmp_folder, interpreter, conda, cmd_prefix, **kwargs)
         self.run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, **kwargs)
@@ -226,7 +226,7 @@ class ImRex(ACmdTCRSpecificityPrediction):
     def epitope_length(self):
         return self.__epitope_length
 
-    def format_tcr_data(self, tcrs, epitopes, pairwise):
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         rename_columns = {
             "VDJ_cdr3": "cdr3",
         }
@@ -262,7 +262,7 @@ class ImRex(ACmdTCRSpecificityPrediction):
         cmd = f"src.scripts.predict.predict --model {model} --input {filenames[0]} --output {filenames[1]}"
         return cmd
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise):
+    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
         results_predictor["MHC"] = results_predictor["MHC"].fillna("")
         results_predictor = results_predictor.rename(columns={"antigen.epitope": "Epitope",
@@ -326,7 +326,7 @@ class TITAN(ACmdTCRSpecificityPrediction):
     def epitope_length(self):
         return self.__epitope_length
 
-    def format_tcr_data(self, tcrs, epitopes, pairwise):
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         df_tcrs = tcrs.to_pandas()
         df_tcrs["VDJ_v_gene"] = df_tcrs["VDJ_v_gene"].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
         df_tcrs["VDJ_j_gene"] = df_tcrs["VDJ_j_gene"].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
@@ -421,7 +421,7 @@ class TITAN(ACmdTCRSpecificityPrediction):
         filenames[5] = f"{filenames[5]}.npy"
         super().run_exec_cmd(cmd[2], [None, filenames[5]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise):
+    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = np.load(filenames[5])[0]
         df_matchup = pd.read_csv(filenames[4], index_col=0)
         df_tcrs = pd.read_csv(filenames[0], index_col=0)
@@ -440,3 +440,131 @@ class TITAN(ACmdTCRSpecificityPrediction):
         joining_list = ["VDJ_v_gene", "VDJ_j_gene", "VDJ_cdr3", "Epitope"]
         df_out = self.transform_output(df_matchup, tcrs, epitopes, pairwise, joining_list)
         return TCRSpecificityPredictionResult(df_out)
+
+
+class TCellMatch(ACmdTCRSpecificityPrediction):
+    """
+    Author: Fischer et al.
+    Paper: https://www.embopress.org/doi/full/10.15252/msb.20199416
+    Repo: https://github.com/theislab/tcellmatch/
+    """
+    __name = "TCellMatch"
+    __version = ""
+    __tcr_length = (0, 40)
+    __epitope_length = (0, 25)
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        rename_columns = {
+            "VDJ_cdr3": "CDR3",
+        }
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3"].isna()) & (df_tcrs["CDR3"] != "")]
+        df_tcrs["Gene"] = "trb"
+
+        df_tcrs = df_tcrs[["CDR3", "Epitope", "Gene"]]
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3", "Epitope")
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs = df_tcrs.reset_index(drop=True)
+        df_tcrs["complex.id"] = df_tcrs.index.copy()
+        return df_tcrs
+
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        path_in = os.path.join(tmp_folder.name, f"{self.name}_input.tsv")
+        path_out = os.path.join(tmp_folder.name, f"{self.name}_output.npy")
+        data.to_csv(path_in, index=False, sep="\t")
+        return [path_in, path_out], tmp_folder
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        path_module = self.get_package_dir("tcellmatch", interpreter, conda, cmd_prefix).split(os.sep)[:-1]
+        path_module = os.sep.join(path_module)
+
+        path_blosum = f"{path_module}/../blosum/BLOSUM50.txt"
+        if not os.path.isfile(path_blosum):
+            self.add_blosum(path_blosum)
+
+        model = "iedb_BILSTM_CONCAT_LEARN_1_1_1_1_1_s_bilstm_cv0" if "model" not in kwargs else kwargs["model"]
+        subfolder = model.split("_")[1].lower()
+        subfolder += f"_separate" if "separate" in model.lower() else ""
+
+        path_model = f"{path_module}/../models/iedb_best/s_{subfolder}/models/"
+        path_model += model
+        if not os.path.isfile(f"{path_model}_model_settings.pkl"):
+            raise ValueError(
+                f"Model {path_model}_model_settings.pkl does not exist. Please download model from  "
+                "https://www.embopress.org/action/downloadSupplement?doi=10.15252%2"
+                "Fmsb.20199416&file=msb199416-sup-0005-DatasetEV4.zip"
+                f" or specify the path to a model via 'model=<path>'")
+        path_utils = os.path.dirname(__file__)
+        cmd = f"{path_utils}/Utils.py tcellmatch {path_model} {filenames[0]} {filenames[1]} {path_blosum}"
+        return cmd
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+        results_predictor = pd.read_csv(filenames[0], sep="\t")
+        scores = np.load(filenames[1])
+        assert len(scores) == len(results_predictor), "Length mismatch between input and output."
+        results_predictor["Score"] = scores
+        results_predictor = results_predictor.rename(columns={"CDR3": "VDJ_cdr3"})
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor = results_predictor[joining_list + ["Score"]]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+    def add_blosum(self, path_file):
+        path_folder = os.sep.join(path_file.split(os.sep)[:-1])
+        os.makedirs(path_folder, exist_ok=True)
+        text = ["0 # https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/BLOSUM50#L2, 2019/07/12",
+                "1 # Entries for the BLOSUM50 matrix at a scale of ln(2)/3.0.",
+                "2 _  A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *",
+                "3 A  5 -2 -1 -2 -1 -1 -1  0 -2 -1 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -2 -1 -1 -5",
+                "4 R -2  7 -1 -2 -4  1  0 -3  0 -4 -3  3 -2 -3 -3 -1 -1 -3 -1 -3 -1 -3  0 -1 -5",
+                "5 N -1 -1  7  2 -2  0  0  0  1 -3 -4  0 -2 -4 -2  1  0 -4 -2 -3  5 -4  0 -1 -5",
+                "6 D -2 -2  2  8 -4  0  2 -1 -1 -4 -4 -1 -4 -5 -1  0 -1 -5 -3 -4  6 -4  1 -1 -5",
+                "7 C -1 -4 -2 -4 13 -3 -3 -3 -3 -2 -2 -3 -2 -2 -4 -1 -1 -5 -3 -1 -3 -2 -3 -1 -5",
+                "8 Q -1  1  0  0 -3  7  2 -2  1 -3 -2  2  0 -4 -1  0 -1 -1 -1 -3  0 -3  4 -1 -5",
+                "9 E -1  0  0  2 -3  2  6 -3  0 -4 -3  1 -2 -3 -1 -1 -1 -3 -2 -3  1 -3  5 -1 -5",
+                "10 G  0 -3  0 -1 -3 -2 -3  8 -2 -4 -4 -2 -3 -4 -2  0 -2 -3 -3 -4 -1 -4 -2 -1 -5",
+                "11 H -2  0  1 -1 -3  1  0 -2 10 -4 -3  0 -1 -1 -2 -1 -2 -3  2 -4  0 -3  0 -1 -5",
+                "12 I -1 -4 -3 -4 -2 -3 -4 -4 -4  5  2 -3  2  0 -3 -3 -1 -3 -1  4 -4  4 -3 -1 -5",
+                "13 L -2 -3 -4 -4 -2 -2 -3 -4 -3  2  5 -3  3  1 -4 -3 -1 -2 -1  1 -4  4 -3 -1 -5",
+                "14 K -1  3  0 -1 -3  2  1 -2  0 -3 -3  6 -2 -4 -1  0 -1 -3 -2 -3  0 -3  1 -1 -5",
+                "15 M -1 -2 -2 -4 -2  0 -2 -3 -1  2  3 -2  7  0 -3 -2 -1 -1  0  1 -3  2 -1 -1 -5",
+                "16 F -3 -3 -4 -5 -2 -4 -3 -4 -1  0  1 -4  0  8 -4 -3 -2  1  4 -1 -4  1 -4 -1 -5",
+                "17 P -1 -3 -2 -1 -4 -1 -1 -2 -2 -3 -4 -1 -3 -4 10 -1 -1 -4 -3 -3 -2 -3 -1 -1 -5",
+                "18 S  1 -1  1  0 -1  0 -1  0 -1 -3 -3  0 -2 -3 -1  5  2 -4 -2 -2  0 -3  0 -1 -5",
+                "19 T  0 -1  0 -1 -1 -1 -1 -2 -2 -1 -1 -1 -1 -2 -1  2  5 -3 -2  0  0 -1 -1 -1 -5",
+                "20 W -3 -3 -4 -5 -5 -1 -3 -3 -3 -3 -2 -3 -1  1 -4 -4 -3 15  2 -3 -5 -2 -2 -1 -5",
+                "21 Y -2 -1 -2 -3 -3 -1 -2 -3  2 -1 -1 -2  0  4 -3 -2 -2  2  8 -1 -3 -1 -2 -1 -5",
+                "22 V  0 -3 -3 -4 -1 -3 -3 -4 -4  4  1 -3  1 -1 -3 -2  0 -3 -1  5 -3  2 -3 -1 -5",
+                "23 B -2 -1  5  6 -3  0  1 -1  0 -4 -4  0 -3 -4 -2  0  0 -5 -3 -3  6 -4  1 -1 -5",
+                "24 J -2 -3 -4 -4 -2 -3 -3 -4 -3  4  4 -3  2  1 -3 -3 -1 -2 -1  2 -4  4 -3 -1 -5",
+                "25 Z -1  0  0  1 -3  4  5 -2  0 -3 -3  1 -1 -4 -1  0 -1 -2 -2 -3  1 -3  5 -1 -5",
+                "26 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -5",
+                "27 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1"]
+        with open(path_file, "w") as file_blosum:
+            file_blosum.writelines(text)
