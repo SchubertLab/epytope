@@ -321,7 +321,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
             repository = kwargs["repository"]
             mhcseq_filepath = os.path.join(repository, "data/hlaCovertPeudoSeq/HLAWithPseudoSeq.csv")
             if not os.path.exists(mhcseq_filepath):
-                raise TypeError(f"Please unzip the models stored at {mhcseq_filepath}.zip to {mhcseq_filepath}")
+                raise TypeError(f"Please unzip the file stored at {mhcseq_filepath}.zip to {mhcseq_filepath}")
             data_hla = pd.read_csv(mhcseq_filepath)
             data_hla["HLA name"] = data_hla["HLA name"].astype(str).str[:7]
             data_hla = data_hla.rename(columns={"HLA name": "HLA",
