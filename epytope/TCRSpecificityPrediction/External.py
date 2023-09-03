@@ -331,7 +331,15 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         chain = "ce" if "chain" not in kwargs else kwargs["chain"]
-        model = "rdforestWithoutMHCModel" if "model" not in kwargs else kwargs["model"]
+        if "model" in kwargs:
+            model = kwargs["model"]
+        else:
+            if chain == "ce":
+                model = "rdforestWithoutMHCModel"
+            elif chain == "cem":
+                model = "rdforestWithMHCModel"
+            else:
+                raise ValueError(f"Chain {chain} incorrect. Please specify correct chain: ce or cem")
         repository = kwargs["repository"]
         model_filepath = os.path.join(repository, "models", f"{model}.pickle")
         if not os.path.exists(model_filepath):
