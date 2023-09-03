@@ -74,6 +74,7 @@ class Ergo2(ARepoTCRSpecificityPrediction):
     __tcr_length = (0, 30)  # TODO
     __epitope_length = (0, 30)  # TODO
     __repo = "https://github.com/IdoSpringer/ERGO-II.git"
+    __organism = None
 
     _rename_columns = {
         "VJ_cdr3": "TRA",
@@ -104,6 +105,10 @@ class Ergo2(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         required_columns = list(self._rename_columns.values()) + ["Peptide", "MHC"]
@@ -189,6 +194,7 @@ class pMTnet(ARepoTCRSpecificityPrediction):
     __trc_length = (0, 40)  # todo
     __epitope_length = (0, 40)  # todo
     __cmd = "pMTnet.py"
+    __organism = "H"
     __repo = "https://github.com/tianshilu/pMTnet"
 
     @property
@@ -214,6 +220,10 @@ class pMTnet(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def input_check(self, tcrs, epitopes, pairwise, **kwargs):
         super().input_check(tcrs, epitopes, pairwise, **kwargs)
@@ -274,6 +284,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
     __version = ""
     __trc_length = (8, 19)
     __epitope_length = (8, 11)
+    __organism = None
     __repo = "https://github.com/ddiem-ri-4D/epiTCR.git"
 
     @property
@@ -295,6 +306,10 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         rename_columns = {
@@ -352,6 +367,7 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
     __version = ""
     __trc_length = (0, 40)  # todo
     __epitope_length = (0, 40)  # todo
+    __organism = "H"
     __repo = "https://github.com/Lee-CBG/ATM-TCR"
 
     @property
@@ -373,6 +389,10 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         rename_columns = {
@@ -424,7 +444,8 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
     __name = "AttnTAP"
     __version = ""
     __trc_length = (6, 30)
-    __epitope_length = (0, 30)
+    __epitope_length = (0, 30) # TODO check one more time
+    __organism = "H"
     __repo = "https://github.com/Bioinformatics7181/AttnTAP.git"
 
     @property
@@ -446,6 +467,10 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         rename_columns = {
@@ -500,6 +525,7 @@ class TEIM(ARepoTCRSpecificityPrediction):
     __version = ""
     __trc_length = (10, 20)
     __epitope_length = (8, 12)
+    __organism = "H"
     __repo = "https://github.com/pengxingang/TEIM.git"
 
     @property
@@ -521,6 +547,10 @@ class TEIM(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         rename_columns = {
@@ -578,6 +608,7 @@ class BERTrand(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (10, 20)
     __epitope_length = (8, 11)
+    __organism = "H"
     __repo = "https://github.com/SFGLab/bertrand.git"
 
     _rename_columns = {
@@ -603,6 +634,10 @@ class BERTrand(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         required_columns = list(self._rename_columns.values()) + ["peptide_seq"]
@@ -666,6 +701,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 30)  # TODO found no info in paper
     __epitope_length = (0, 30)  # TODO found no info in paper
+    __organism = None
     __repo = "https://github.com/louzounlab/ERGO.git"
 
     _rename_columns = {
@@ -691,6 +727,10 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         required_columns = list(self._rename_columns.values()) + ["epitope"]
@@ -740,6 +780,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (5, 30)
     __epitope_length = (7, 15)
+    __organism = "H"
     __repo = "https://github.com/jiangdada1221/TEINet.git"
 
     _rename_columns = {
@@ -765,6 +806,10 @@ class TEINet(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         required_columns = list(self._rename_columns.values()) + ["Epitope"]
@@ -817,7 +862,8 @@ class PanPep(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 30)  # TODO no info in paper found
     __epitope_length = (0, 30)  # TODO no info in paper found
-    __repo = "https://github.com/IdoSpringer/ERGO-II.git" # TODO
+    __organism = None
+    __repo = "https://github.com/bm2-lab/PanPep.git"
 
     _rename_columns = {
         "VDJ_cdr3": "CDR3"
@@ -873,14 +919,15 @@ class PanPep(ARepoTCRSpecificityPrediction):
 
 class DLpTCR(ARepoTCRSpecificityPrediction):
     """
-    Author: Xu et al.
+    Author: Xu, Luo, Lin et al.
     Paper: https://pubmed.ncbi.nlm.nih.gov/34415016/
     Repo: https://github.com/JiangBioLab/DLpTCR
     """
     __name = "DLpTCR"
     __version = ""
     __trc_length = (8, 20)
-    __epitope_length = (0, 30)  # not sure, 9 for analysis, but no more info
+    __epitope_length = (0, 30)  # TODO not sure, 9 for analysis, but no more info
+    __organism = "H"
     __repo = "https://github.com/JiangBioLab/DLpTCR"
     _oldwdir = ""
 
@@ -903,6 +950,10 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         rename_columns = {

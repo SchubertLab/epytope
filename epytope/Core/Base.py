@@ -429,6 +429,11 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
     @abc.abstractmethod
     def epitope_length(self):
         raise NotImplementedError
+    
+    @property
+    @abc.abstractmethod
+    def organism(self):
+        raise NotImplementedError
 
     @abc.abstractmethod
     def predict(self, tcrs, epitopes, pairwise=True, **kwargs):
@@ -496,9 +501,16 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         """
         from epytope.Core.ImmuneReceptor import TCellReceptor
         from epytope.Core.TCREpitope import TCREpitope
+        organisms = {"HomoSapiens": 0, "MusMusculus": 0, "Other": 0}
         for tcr in tcrs.receptors:
             if not isinstance(tcr, TCellReceptor):
                 raise ValueError(f"{tcr} is not of type TCRReceptor")
+            if tcr.organism.casefold() == "HomoSapiens".casefold():
+                organisms["HomoSapiens"] += 1
+            elif tcr.organism.casefold() == "MusMusculus".casefold():
+                organisms["MusMusculus"] += 1
+            else:
+                organisms["Other"] += 1
         for epitope in epitopes:
             if not isinstance(epitope, TCREpitope):
                 raise ValueError(f"{epitope} is not of type TCREpitope")
@@ -507,6 +519,16 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
             if len(tcrs.receptors) != len(epitopes):
                 raise ValueError(f"len(tcrs) ({len(tcrs.receptors)}) must equal len(epitopes) ({len(epitopes)}) "
                                  f"when pairwise==False")
+        
+        organism_tool = self.organism
+        if organism_tool == "H" and organisms["MusMusculus"] + organisms["Other"] != 0:
+            warnings.warn(f"The {self.name} tool was trained only for Homo Sapiens, but the input contains "
+                          f"{organisms['MusMusculus'] + organisms['Other']} entries from other organisms.", stacklevel=2)
+        elif organism_tool == "M" and organisms["HomoSapiens"] + organisms["Other"] != 0:
+            warnings.warn(f"The {self.name} tool was trained only for Mus Musculus, but the input contains "
+                          f"{organisms['HomoSapiens'] + organisms['Other']} entries from other organisms.", stacklevel=2)
+        elif organism_tool == None:
+            warnings.warn(f"The organism {self.name} tool was trained for was not specified.", stacklevel=2)
 
     def filter_by_length(self, df_data, col_tra, col_trb, col_epitope):
         for col, lengths in [(col_tra, self.tcr_length), (col_trb, self.tcr_length),
