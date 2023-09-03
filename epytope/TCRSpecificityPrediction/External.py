@@ -310,23 +310,33 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
         df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
         df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
         df_tcrs["binder"] = 1
-        df_tcrs["HLA"] = df_tcrs["HLA"].str[4:]  # TODO test what happens if no HLA is provided / do we need HLA?
+        df_tcrs["HLA"] = df_tcrs["HLA"].astype(str).str[4:]  # TODO test what happens if no HLA is provided / do we need HLA?
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(inplace=True, keep="first")
         if df_tcrs.shape[0] == 1:
             df_tcrs = pd.concat([df_tcrs] * 2).sort_index().reset_index(drop=True)
         df_tcrs.iat[0, df_tcrs.columns.get_loc("binder")] = 0
+        chain = "ce" if "chain" not in kwargs else kwargs["chain"]
+        if chain == "cem":
+            repository = kwargs["repository"]
+            mhcseq_filepath = os.path.join(repository, "data/hlaCovertPeudoSeq/HLAWithPseudoSeq.csv")
+            if not os.path.exists(mhcseq_filepath):
+                raise TypeError(f"Please unzip the models stored at {mhcseq_filepath}.zip to {mhcseq_filepath}")
+            data_hla = pd.read_csv(mhcseq_filepath)
+            data_hla["HLA name"] = data_hla["HLA name"].astype(str).str[:7]
+            data_hla = data_hla.rename(columns={"HLA name": "HLA",
+                                                "HLA PSEUDO SEQ": "MHC"})
+            df_tcrs = pd.merge(df_tcrs, data_hla, on=["HLA"])
         return df_tcrs
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = "rdforestWithoutMHCModel"
-        if "model" in kwargs:
-            model = kwargs["model"]
+        chain = "ce" if "chain" not in kwargs else kwargs["chain"]
+        model = "rdforestWithoutMHCModel" if "model" not in kwargs else kwargs["model"]
         repository = kwargs["repository"]
         model_filepath = os.path.join(repository, "models", f"{model}.pickle")
         if not os.path.exists(model_filepath):
             raise TypeError(f"Please unzip the models stored at {model_filepath}.zip to {model_filepath}")
-        return f"predict.py --testfile {filenames[0]} --modelfile {model_filepath} --chain ce >> {filenames[1]}"
+        return f"predict.py --testfile {filenames[0]} --modelfile {model_filepath} --chain {chain} >> {filenames[1]}"
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1], skiprows=15, index_col=False)
