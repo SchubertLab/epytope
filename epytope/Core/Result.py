@@ -445,7 +445,7 @@ class TCRSpecificityPredictionResult(AResult):
             masks = masks[0]
         return TCRSpecificityPredictionResult(self.loc[masks, :])
 
-    def merge_results(self, others):
+    def merge_results(self, other):
         """
         Merges results of type :class:`~epytope.Core.Result.TCRSpecificityPredictionResult` and returns the merged
         result
@@ -455,6 +455,10 @@ class TCRSpecificityPredictionResult(AResult):
         :return: new merged :class:`~epytope.Core.Result.TCRSpecificityPredictionResult` object
         :rtype: :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`
         """
-        if type(others) == type(self):
-            others = [others]
-        return TCRSpecificityPredictionResult(pandas.concat([self] + others, axis=1))
+        result = pandas.merge(self, other, how="outer")
+        tcr = result["TCR"]
+        other = result.drop(["TCR"], axis=1, level=0)
+        other.sort_index(axis=1, level=0, sort_remaining=False, inplace=True)
+        tuples = [("TCR", el) for el in tcr.columns]
+        tcr.columns = pandas.MultiIndex.from_tuples(tuples)
+        return pandas.concat([tcr, other], axis=1)

@@ -144,7 +144,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
             df_out = self.combine_tcrs_epitopes_list(df_out, epitopes)
             df_out = df_out.merge(result_df, on=joining_list, how="left")
             tuples = [("TCR", el) for el in df_out.columns][:-3]
-            tuples.extend([("Epitope", "Peptide"), ("Epitope", "MHC"), ("Method", self.name)])
+            tuples.extend([("Epitope", "Peptide"), ("Epitope", "MHC"), ("Method", self.name.lower())])
             df_out.columns = pd.MultiIndex.from_tuples(tuples)
         else:
             tuples = [('TCR', el) for el in df_out.columns]
@@ -152,12 +152,12 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
                 df_tmp = result_df[result_df["Epitope"] == epitope.peptide].copy()
                 if "MHC" in joining_list:
                     df_tmp = df_tmp[df_tmp["MHC"].astype(str) == (epitope.allele if epitope.allele else "")].copy()
-                tuples.extend([(str(epitope), self.name)])
+                tuples.extend([(str(epitope), self.name.lower())])
                 df_out = df_out.merge(df_tmp, on=[el for el in joining_list if el not in ["Epitope", "MHC"]],
                                       how="left")
                 df_out = df_out.drop(columns=["MHC", "Epitope"], errors="ignore")
             df_out.columns = pd.MultiIndex.from_tuples(tuples)
-        return df_out
+        return TCRSpecificityPredictionResult(df_out)
 
     def clean_up(self, tmp_folder, files=None):
         """
