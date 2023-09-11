@@ -455,10 +455,17 @@ class TCRSpecificityPredictionResult(AResult):
         :return: new merged :class:`~epytope.Core.Result.TCRSpecificityPredictionResult` object
         :rtype: :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`
         """
-        result = pandas.merge(self, other, how="outer")
-        tcr = result["TCR"]
-        other = result.drop(["TCR"], axis=1, level=0)
-        other.sort_index(axis=1, level=0, sort_remaining=False, inplace=True)
-        tuples = [("TCR", el) for el in tcr.columns]
-        tcr.columns = pandas.MultiIndex.from_tuples(tuples)
-        return pandas.concat([tcr, other], axis=1)
+        result = self
+        if not isinstance(other, list):
+            other = [other]
+        merging_tcr = self["TCR"]
+        merging_tuples = [("TCR", el) for el in merging_tcr.columns]
+        for i in range(len(other)):
+            result = pandas.merge(result, other[i], on = merging_tuples, how="outer")
+            tcr = result["TCR"]
+            result.drop(["TCR"], axis=1, level=0, inplace=True)
+            result.sort_index(axis=1, level=0, sort_remaining=False, inplace=True)
+            tuples = [("TCR", el) for el in tcr.columns]
+            tcr.columns = pandas.MultiIndex.from_tuples(tuples)
+            result = pandas.concat([tcr, result], axis=1)
+        return result

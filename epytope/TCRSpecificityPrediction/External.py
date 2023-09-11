@@ -74,7 +74,7 @@ class Ergo2(ARepoTCRSpecificityPrediction):
     __tcr_length = (0, 30)  # TODO
     __epitope_length = (0, 30)  # TODO
     __repo = "https://github.com/IdoSpringer/ERGO-II.git"
-    __organism = None
+    __organism = "HM"
 
     _rename_columns = {
         "VJ_cdr3": "TRA",
@@ -284,7 +284,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
     __version = ""
     __trc_length = (8, 19)
     __epitope_length = (8, 11)
-    __organism = None
+    __organism = "HM"
     __repo = "https://github.com/ddiem-ri-4D/epiTCR.git"
 
     @property
@@ -701,7 +701,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 30)  # TODO found no info in paper
     __epitope_length = (0, 30)  # TODO found no info in paper
-    __organism = None
+    __organism = "HM"
     __repo = "https://github.com/louzounlab/ERGO.git"
 
     _rename_columns = {
@@ -862,7 +862,7 @@ class PanPep(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 30)  # TODO no info in paper found
     __epitope_length = (0, 30)  # TODO no info in paper found
-    __organism = None
+    __organism = "HM"
     __repo = "https://github.com/bm2-lab/PanPep.git"
 
     _rename_columns = {
@@ -888,6 +888,10 @@ class PanPep(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         required_columns = list(self._rename_columns.values()) + ["Peptide"]
