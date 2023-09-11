@@ -445,7 +445,7 @@ class TCRSpecificityPredictionResult(AResult):
             masks = masks[0]
         return TCRSpecificityPredictionResult(self.loc[masks, :])
 
-    def merge_results(self, other):
+    def merge_results(self, others):
         """
         Merges results of type :class:`~epytope.Core.Result.TCRSpecificityPredictionResult` and returns the merged
         result
@@ -456,12 +456,12 @@ class TCRSpecificityPredictionResult(AResult):
         :rtype: :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`
         """
         result = self
-        if not isinstance(other, list):
-            other = [other]
+        if not isinstance(others, list):
+            others = [others]
         merging_tcr = self["TCR"]
         merging_tuples = [("TCR", el) for el in merging_tcr.columns]
-        for i in range(len(other)):
-            result = pandas.merge(result, other[i], on = merging_tuples, how="outer")
+        for i in range(len(others)):
+            result = pandas.merge(result, others[i], on = merging_tuples, how="outer")
             tcr = result["TCR"]
             result.drop(["TCR"], axis=1, level=0, inplace=True)
             result.sort_index(axis=1, level=0, sort_remaining=False, inplace=True)
