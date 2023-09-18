@@ -63,7 +63,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         filenames, tmp_folder = self.save_tmp_files(data, **kwargs)
         cmd = self.get_base_cmd(filenames, tmp_folder, interpreter, conda, cmd_prefix, **kwargs)
         self.run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, **kwargs)
-        df_results = self.format_results(filenames, tcrs, epitopes, pairwise, **kwargs)
+        df_results = self.format_results(filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs)
         self.clean_up(tmp_folder, filenames)
         return df_results
 
@@ -135,7 +135,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
 
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         raise NotImplementedError
 
     def transform_output(self, result_df, tcrs, epitopes, pairwise, joining_list, **kwargs):
@@ -263,7 +263,7 @@ class ImRex(ACmdTCRSpecificityPrediction):
         cmd = f"src.scripts.predict.predict --model {model} --input {filenames[0]} --output {filenames[1]}"
         return cmd
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
         results_predictor["MHC"] = results_predictor["MHC"].fillna("")
         results_predictor = results_predictor.rename(columns={"antigen.epitope": "Epitope",
@@ -422,7 +422,7 @@ class TITAN(ACmdTCRSpecificityPrediction):
         filenames[5] = f"{filenames[5]}.npy"
         super().run_exec_cmd(cmd[2], [None, filenames[5]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = np.load(filenames[5])[0]
         df_matchup = pd.read_csv(filenames[4], index_col=0)
         df_tcrs = pd.read_csv(filenames[0], index_col=0)
@@ -525,7 +525,7 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[0], sep="\t")
         scores = np.load(filenames[1])
         assert len(scores) == len(results_predictor), "Length mismatch between input and output."
@@ -688,7 +688,7 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         super().run_exec_cmd(cmd[0], [None, filenames[1]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
         super().run_exec_cmd(cmd[1], [None, filenames[2]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[2], index_col=0)
         rename_dict = {v: k for k, v in self._rename_columns.items()}
         rename_dict["epitope_aa"] = "Epitope"
