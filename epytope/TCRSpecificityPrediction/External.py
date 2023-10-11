@@ -631,6 +631,8 @@ class BERTrand(ARepoTCRSpecificityPrediction):
         return f"bertrand.model.inference -i={filenames[0]} -m={model} -o={filenames[1]}"
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        old_dir = os.getcwd()
+        os.chdir(repository)
         cmds = []
         if cmd_prefix is not None:
             cmds.append(cmd_prefix)
@@ -643,6 +645,7 @@ class BERTrand(ARepoTCRSpecificityPrediction):
                 cmd_conda = f"conda run -n {conda}"
         cmds.append(f"{cmd_conda} python -m {cmd}")
         self.exec_cmd(" && ".join(cmds), filenames[1])
+        os.chdir(old_dir)
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
