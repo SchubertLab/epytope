@@ -47,6 +47,7 @@ class ARepoTCRSpecificityPrediction(ACmdTCRSpecificityPrediction):
                                      f"'git clone {self.repo}'")
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        old_dir = os.getcwd()
         os.chdir(repository)
 
         interpreter = "python" if interpreter is None else interpreter
@@ -61,6 +62,7 @@ class ARepoTCRSpecificityPrediction(ACmdTCRSpecificityPrediction):
                 cmd_conda = f"conda run -n {conda}"
         cmds.append(f"{cmd_conda} {interpreter} {repository}/{cmd}")
         self.exec_cmd(" && ".join(cmds), filenames[1])
+        os.chdir(old_dir)
 
 
 class Ergo2(ARepoTCRSpecificityPrediction):
@@ -145,6 +147,7 @@ class Ergo2(ARepoTCRSpecificityPrediction):
         joining_list.remove("celltype")
         results_predictor = results_predictor[joining_list + ["Score"]]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        print(os.curdir)
         return df_out
 
     def correct_code(self, path_repo):
@@ -328,7 +331,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
         return f"predict.py --testfile {filenames[0]} --modelfile {model_filepath} --chain ce >> {filenames[1]}"
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
-        results_predictor = pd.read_csv(filenames[1], skiprows=15, index_col=False)
+        results_predictor = pd.read_csv(filenames[1], skiprows=14, index_col=False)
         results_predictor = results_predictor[:-1]
         results_predictor = results_predictor.rename(columns={"CDR3b": "VDJ_cdr3",
                                                               "epitope": "Epitope",
@@ -628,6 +631,7 @@ class BERTrand(ARepoTCRSpecificityPrediction):
         return f"bertrand.model.inference -i={filenames[0]} -m={model} -o={filenames[1]}"
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        old_dir = os.getcwd()
         os.chdir(repository)
         cmds = []
         if cmd_prefix is not None:
@@ -641,6 +645,7 @@ class BERTrand(ARepoTCRSpecificityPrediction):
                 cmd_conda = f"conda run -n {conda}"
         cmds.append(f"{cmd_conda} python -m {cmd}")
         self.exec_cmd(" && ".join(cmds), filenames[1])
+        os.chdir(old_dir)
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
@@ -958,8 +963,9 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         return cmd_epitope
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
-        self._oldwdir = os.curdir
+        old_dir = os.getcwd()
         os.chdir(repository)
+
         cmds = []
         if cmd_prefix is not None:
             cmds.append(cmd_prefix)
@@ -971,6 +977,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
                 cmd_conda = f"conda run -n {conda}"
         cmds.append(f"{cmd_conda} {cmd}")
         self.exec_cmd(" && ".join(cmds), filenames[1])
+        os.chdir(old_dir)
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
@@ -997,5 +1004,4 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
-        os.chdir(self._oldwdir)
         return df_out

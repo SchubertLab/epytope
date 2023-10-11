@@ -50,7 +50,6 @@ def stapler_reconstruction():
     path_in = sys.argv[2]
     path_out = sys.argv[3]
     df_tcrs = pd.read_csv(path_in, index_col=0)
-
     species_counts = df_tcrs["organism"].value_counts(dropna=False)
     species = species_counts.index[0].lower().replace(" ", "")
     species = "human" if species in ["homosapiens"] else "mouse" if species in ["musmusculus", "murine"] else species
