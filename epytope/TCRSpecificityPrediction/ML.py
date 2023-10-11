@@ -14,6 +14,9 @@ import subprocess
 import tempfile
 import pandas as pd
 import numpy as np
+import yaml
+from functools import reduce
+import operator
 from epytope.Core.Base import ATCRSpecificityPrediction
 from epytope.Core.TCREpitope import TCREpitope
 from epytope.Core.ImmuneReceptor import ImmuneReceptor
@@ -568,3 +571,133 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
                 "27 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1"]
         with open(path_file, "w") as file_blosum:
             file_blosum.writelines(text)
+
+
+class STAPLER(ACmdTCRSpecificityPrediction):
+    """
+    Author: Kwee et al.
+    Paper: https://www.biorxiv.org/content/10.1101/2023.04.25.538237v1
+    Repo: https://github.com/NKI-AI/STAPLER/
+    """
+    __name = "stapler"
+    __version = ""
+    __tcr_length = (0, 40)  # TODO
+    __epitope_length = (0, 25) # TODO
+
+    _rename_columns = {
+        "VDJ_cdr3": "cdr3_beta_aa",
+        "VDJ_v_gene": "TRBV_IMGT",
+        "VDJ_j_gene": "TRBJ_IMGT",
+        "VJ_cdr3": "cdr3_alpha_aa",
+        "VJ_v_gene": "TRAV_IMGT",
+        "VJ_j_gene": "TRAJ_IMGT",
+    }
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+
+        for col in self._rename_columns.values():
+            df_tcrs = df_tcrs[(~df_tcrs[col].isna()) & (df_tcrs[col] != "")]
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope_aa"})
+        df_tcrs = self.filter_by_length(df_tcrs, "cdr3_alpha_aa", "cdr3_beta_aa", "epitope_aa")
+        df_tcrs = df_tcrs[list(self._rename_columns.values()) + ["epitope_aa", "organism"]]
+        df_tcrs["label_true_pair"] =  0
+        df_tcrs = df_tcrs.drop_duplicates()
+        return df_tcrs
+
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        path_in_raw = os.path.join(tmp_folder.name, f"{self.name}_raw_input.csv")
+        path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
+        path_out = os.path.join(tmp_folder.name, "predictions_5_fold_ensamble.csv")
+        data.to_csv(path_in_raw)
+        return [path_in_raw, path_in, path_out], tmp_folder
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        path_utils = os.path.dirname(__file__)
+        cmd_reconstruct = f"{path_utils}/Utils.py stapler {filenames[0]} {filenames[1]}"
+
+        path_module = self.get_package_dir("stapler", interpreter, conda, cmd_prefix).split(os.sep)[:-1]
+        path_module = os.sep.join(path_module)
+
+        path_models = os.sep.join([path_module, "..", "model"])
+        if not os.path.isdir(path_models):
+            raise ValueError(f"Model {path_models} does not exist. Please download the models from  "
+                             f"https://files.aiforoncology.nl/stapler/´to {path_models}")
+
+        cmd_predict = f"{path_module}/../tools/test.py"
+
+        self.change_configs(path_module, tmp_folder, filenames)
+        return [cmd_reconstruct, cmd_predict]
+
+    def change_configs(self, path_module, tmp_dir, filenames):
+        path_config = f"{path_module}/../config"
+        path_paths = f"{path_config}/paths/default.yaml"
+        yaml_paths = {
+            "root_dir": tmp_dir.name,
+            "log_dir": f"{tmp_dir}/logs",
+            "output_dir": tmp_dir.name,
+            "work_dir": os.getcwd(),
+        }
+        with open(path_paths, "w") as file_paths:
+            yaml.dump(yaml_paths, file_paths)
+        paths = {
+                f"{path_config}/datamodule/train_dataset.yaml": {"test_data_path": filenames[1],
+                                                                 "train_data_path": filenames[1], 
+                                                                },
+                f"{path_config}/test.yaml": {"test_from_ckpt_path": f"{path_module}/../model/finetuned_model_refactored/"},
+                f"{path_config}/callbacks/train_model_checkpoint.yaml": {"model_checkpoint->dirpath": f"{path_module}/../model/"},
+                f"{path_config}/model/train_medium_model.yaml": {"checkpoint_path": f"{path_module}/../model/pretrained_model/pre-cdr3_combined_epoch=437-train_mlm_loss=0.702.ckpt"},
+        }
+        for k, v in paths.items():
+            self.change_yaml(k, v)
+
+        
+    def change_yaml(self, path_yaml, change_dict):
+        def get_by_path(dictionary, keys):
+            return reduce(operator.getitem, keys, dictionary)
+        
+        with open(path_yaml, "r") as file_yaml:
+            yaml_content = yaml.safe_load(file_yaml)
+        for k, v in change_dict.items():
+            levels = k.split("->")
+            get_by_path(yaml_content, levels[:-1])[levels[-1]] = v   
+        with open(path_yaml, "w") as file_yaml:
+            yaml.dump(yaml_content, file_yaml)
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        super().run_exec_cmd(cmd[0], [None, filenames[1]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+        super().run_exec_cmd(cmd[1], [None, filenames[2]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+
+    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+        results_predictor = pd.read_csv(filenames[2], index_col=0)
+        rename_dict = {v: k for k, v in self._rename_columns.items()}
+        rename_dict["epitope_aa"] = "Epitope"
+        rename_dict["pred_cls"] = "Score"
+        results_predictor = results_predictor.rename(columns=rename_dict)
+
+        joining_list = list(self._rename_columns.keys()) + ["Epitope"]
+        results_predictor = results_predictor[joining_list + ["Score"]]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
