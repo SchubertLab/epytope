@@ -656,9 +656,9 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         path_paths = f"{path_config}/paths/default.yaml"
         yaml_paths = {
             "root_dir": tmp_dir.name,
-            "log_dir": f"{tmp_dir}/logs",
+            "log_dir": f"{tmp_dir.name}/logs",
             "output_dir": tmp_dir.name,
-            "work_dir": os.getcwd(),
+            "work_dir": tmp_dir.name,
         }
         with open(path_paths, "w") as file_paths:
             yaml.dump(yaml_paths, file_paths)
