@@ -331,7 +331,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
         return f"predict.py --testfile {filenames[0]} --modelfile {model_filepath} --chain ce >> {filenames[1]}"
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
-        results_predictor = pd.read_csv(filenames[1], skiprows=15, index_col=False)
+        results_predictor = pd.read_csv(filenames[1], skiprows=14, index_col=False)
         results_predictor = results_predictor[:-1]
         results_predictor = results_predictor.rename(columns={"CDR3b": "VDJ_cdr3",
                                                               "epitope": "Epitope",
