@@ -133,7 +133,6 @@ class Ergo2(ARepoTCRSpecificityPrediction):
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         if repository is not None and repository != "" and os.path.isdir(repository):
-            os.chdir(repository)
             self.correct_code(repository)
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
 
@@ -817,7 +816,7 @@ class PanPep(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 30)  # TODO no info in paper found
     __epitope_length = (0, 30)  # TODO no info in paper found
-    __repo = "https://github.com/IdoSpringer/ERGO-II.git" # TODO
+    __repo = "https://github.com/bm2-lab/PanPep" # TODO
 
     _rename_columns = {
         "VDJ_cdr3": "CDR3"
