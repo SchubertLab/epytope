@@ -960,6 +960,9 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         return cmd_epitope
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        old_dir = os.getcwd()
+        os.chdir(repository)
+
         cmds = []
         if cmd_prefix is not None:
             cmds.append(cmd_prefix)
@@ -971,6 +974,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
                 cmd_conda = f"conda run -n {conda}"
         cmds.append(f"{cmd_conda} {cmd}")
         self.exec_cmd(" && ".join(cmds), filenames[1])
+        os.chdir(old_dir)
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
