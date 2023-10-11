@@ -673,7 +673,6 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         for k, v in paths.items():
             self.change_yaml(k, v)
 
-        
     def change_yaml(self, path_yaml, change_dict):
         def get_by_path(dictionary, keys):
             return reduce(operator.getitem, keys, dictionary)
@@ -696,7 +695,6 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         rename_dict["epitope_aa"] = "Epitope"
         rename_dict["pred_cls"] = "Score"
         results_predictor = results_predictor.rename(columns=rename_dict)
-
         joining_list = list(self._rename_columns.keys()) + ["Epitope"]
         results_predictor = results_predictor[joining_list + ["Score"]]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)

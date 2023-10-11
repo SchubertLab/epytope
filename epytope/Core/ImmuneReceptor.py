@@ -9,8 +9,6 @@
 """
 
 from epytope.Core.Base import MetadataLogger
-from epytope.Core.ImmuneReceptorChain import ImmuneReceptorChain
-from typing import List
 
 
 class ImmuneReceptorFactory(type):
