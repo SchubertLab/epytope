@@ -821,7 +821,7 @@ class PanPep(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 30)  # TODO no info in paper found
     __epitope_length = (0, 30)  # TODO no info in paper found
-    __repo = "https://github.com/IdoSpringer/ERGO-II.git" # TODO
+    __repo = "https://github.com/bm2-lab/PanPep" # TODO
 
     _rename_columns = {
         "VDJ_cdr3": "CDR3"
