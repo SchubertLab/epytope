@@ -15,6 +15,8 @@ import tempfile
 import pandas as pd
 import numpy as np
 import yaml
+from functools import reduce
+import operator
 from epytope.Core.Base import ATCRSpecificityPrediction
 from epytope.Core.TCREpitope import TCREpitope
 from epytope.Core.ImmuneReceptor import ImmuneReceptor
@@ -570,6 +572,7 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
         with open(path_file, "w") as file_blosum:
             file_blosum.writelines(text)
 
+
 class STAPLER(ACmdTCRSpecificityPrediction):
     """
     Author: Kwee et al.
@@ -653,21 +656,19 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         path_paths = f"{path_config}/paths/default.yaml"
         yaml_paths = {
             "root_dir": tmp_dir.name,
-            "log_dir": f"{tmp_dir}/logs",
+            "log_dir": f"{tmp_dir.name}/logs",
             "output_dir": tmp_dir.name,
-            "work_dir": os.getcwd(),
+            "work_dir": tmp_dir.name,
         }
         with open(path_paths, "w") as file_paths:
             yaml.dump(yaml_paths, file_paths)
         paths = {
-            f"{path_config}/datamodule/train_dataset.yaml": {"test_data_path": filenames[1],
-                                                             "train_data_path": filenames[1],
-                                                             },
-            f"{path_config}/test.yaml": {"test_from_ckpt_path": f"{path_module}/../model/finetuned_model_refactored/"},
-            f"{path_config}/callbacks/train_model_checkpoint.yaml": {
-                "model_checkpoint->dirpath": f"{path_module}/../model/"},
-            f"{path_config}/model/train_medium_model.yaml": {
-                "checkpoint_path": f"{path_module}/../model/pretrained_model/pre-cdr3_combined_epoch=437-train_mlm_loss=0.702.ckpt"},
+                f"{path_config}/datamodule/train_dataset.yaml": {"test_data_path": filenames[1],
+                                                                 "train_data_path": filenames[1], 
+                                                                },
+                f"{path_config}/test.yaml": {"test_from_ckpt_path": f"{path_module}/../model/finetuned_model_refactored/"},
+                f"{path_config}/callbacks/train_model_checkpoint.yaml": {"model_checkpoint->dirpath": f"{path_module}/../model/"},
+                f"{path_config}/model/train_medium_model.yaml": {"checkpoint_path": f"{path_module}/../model/pretrained_model/pre-cdr3_combined_epoch=437-train_mlm_loss=0.702.ckpt"},
         }
         for k, v in paths.items():
             self.change_yaml(k, v)
@@ -675,12 +676,12 @@ class STAPLER(ACmdTCRSpecificityPrediction):
     def change_yaml(self, path_yaml, change_dict):
         def get_by_path(dictionary, keys):
             return reduce(operator.getitem, keys, dictionary)
-
+        
         with open(path_yaml, "r") as file_yaml:
             yaml_content = yaml.safe_load(file_yaml)
         for k, v in change_dict.items():
             levels = k.split("->")
-            get_by_path(yaml_content, levels[:-1])[levels[-1]] = v
+            get_by_path(yaml_content, levels[:-1])[levels[-1]] = v   
         with open(path_yaml, "w") as file_yaml:
             yaml.dump(yaml_content, file_yaml)
 
