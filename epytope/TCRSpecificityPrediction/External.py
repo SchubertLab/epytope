@@ -138,7 +138,7 @@ class Ergo2(ARepoTCRSpecificityPrediction):
             self.correct_code(repository)
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1], index_col=0)
         results_predictor = results_predictor.fillna("")
         results_predictor = results_predictor.rename(columns={k: v for v, k in self._rename_columns.items()})
@@ -255,7 +255,7 @@ class pMTnet(ARepoTCRSpecificityPrediction):
               f"-output {filenames[1]} -output_log {filenames[2]}"
         return cmd
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(f"{filenames[1]}/prediction.csv")
         results_predictor = results_predictor.rename(columns={"Rank": "Score", "HLA": "MHC", "Antigen": "Epitope",
                                                               "CDR3": "VDJ_cdr3"})
@@ -407,7 +407,7 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
         cmd = f"main.py --infile data/combined_dataset.csv --indepfile {filenames[0]} --mode test --cuda {cuda}"
         return cmd
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1], sep="\t", header=None)
         results_predictor.columns = ["Epitope", "VDJ_cdr3", "Label", "Binary", "Score"]
         results_predictor = results_predictor[["Epitope", "VDJ_cdr3", "Score"]]
@@ -479,7 +479,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
         cmd += f"--load_model_file {model_filepath}"
         return cmd
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
         results_predictor = results_predictor.rename(columns={"tcr": "VDJ_cdr3",
                                                               "antigen": "Epitope",
@@ -557,7 +557,7 @@ class TEIM(ARepoTCRSpecificityPrediction):
             if os.path.exists(file):
                 os.remove(file)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
         results_predictor = results_predictor.rename(columns={"cdr3": "VDJ_cdr3",
                                                               "epitope": "Epitope",
@@ -647,7 +647,7 @@ class BERTrand(ARepoTCRSpecificityPrediction):
         self.exec_cmd(" && ".join(cmds), filenames[1])
         os.chdir(old_dir)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
         input_predictor = pd.read_csv(filenames[0])
         joining_list = ["VDJ_cdr3", "Epitope"]
@@ -726,7 +726,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         return f"ERGO.py predict {model_type} vdjdb specific {cuda} --model_file={model_filepath} " \
                f"--train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1], sep='\t', names=["VDJ_cdr3", "Epitope", "Score"], header=None)
         joining_list = ["Epitope", "VDJ_cdr3"]
         results_predictor = results_predictor[joining_list + ["Score"]]
@@ -799,7 +799,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
         cmd += f"--use_column CDR3.beta --model_path {model} --device {device}"
         return cmd
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1], header=None, names=["Score", "Label"])
         input_predictor = pd.read_csv(filenames[0])
         joining_list = ["VDJ_cdr3", "Epitope"]
@@ -864,7 +864,7 @@ class PanPep(ARepoTCRSpecificityPrediction):
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         return f"PanPep.py --learning_setting zero-shot --input {filenames[0]} --output {filenames[1]}"
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
         joining_list = ["VDJ_cdr3", "Epitope"]
         results_predictor = results_predictor.rename(columns={"CDR3": "VDJ_cdr3",
@@ -979,7 +979,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         self.exec_cmd(" && ".join(cmds), filenames[1])
         os.chdir(old_dir)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
         if model_type == "B":
             results_predictor = pd.read_csv(filenames[1], header=0,
@@ -1005,3 +1005,123 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor.drop_duplicates()
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
+
+class TULIP(ARepoTCRSpecificityPrediction):
+    """
+    Author: Meynard-Piganeau et al.
+    Paper: https://www.biorxiv.org/content/10.1101/2023.07.19.549669v1.full.pdf
+    Repo: https://github.com/barthelemymp/TULIP-TCR
+    """
+    __name = "TULIP-TCR"
+    __version = ""
+    __tcr_length = (0, 30) #TODO check, no info found in paper
+    __epitope_length = (0, 30) #TODO check, no info found in paper
+    __organism = "HM"
+    __repo = "https://github.com/barthelemymp/TULIP-TCR.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3b",
+        "VJ_cdr3": "CDR3a"
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    @property
+    def organism(self):
+        return self.__organism
+    
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        required_columns = list(self._rename_columns.values()) + ["peptide", "MHC"]
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide"})
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3a"].isna()) & (df_tcrs["CDR3a"] != "")]
+        df_tcrs = df_tcrs[(~df_tcrs["MHC"].isna()) & (df_tcrs["MHC"] != "")]
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["binder"] = 1
+        return df_tcrs
+    
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        model = f"{kwargs['repository']}/model_weights/pretrained/multiTCR_s_mhcX_2_below20out" if "model" not in kwargs else kwargs["model"]
+        config = f"{kwargs['repository']}/configs/shallow.config.json" if "config" not in kwargs else kwargs["config"]
+        return f"predict.py --test_dir {filenames[0]} --modelconfig {config} --load {model} --output {tmp_folder.name}/ >> {filenames[1]}"
+
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):  
+        csv_files = list(filter(lambda f: f.endswith(".csv"), os.listdir(tmp_folder.name)))
+        csv_files.remove(f"{self.name}_input.csv")
+        csv_files.remove(f"{self.name}_output.csv")
+        result_list = []
+        for file in csv_files:
+            result_list.append(pd.read_csv(os.path.join(tmp_folder.name, file)))
+        results_predictor = pd.concat(result_list, ignore_index=True)
+        results_predictor = results_predictor.fillna("")
+        joining_list = ["VJ_cdr3", "VDJ_cdr3", "Epitope", "MHC"]
+        results_predictor = results_predictor.rename(columns={"CDR3b": "VDJ_cdr3",
+                                                              "CDR3a": "VJ_cdr3",
+                                                              "peptide": "Epitope"})
+        required_columns = joining_list + ["Score"]
+        results_predictor = results_predictor[required_columns]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+    
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
+        processor = "cpu" if "processor" not in kwargs else kwargs["processor"]
+        if repository is not None and repository != "" and os.path.isdir(repository):
+            os.chdir(repository)
+            self.correct_code(repository, processor)
+        super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
+    
+    def correct_code(self, path_repo, processor):
+        """
+        The github repo contains several bugs, which will be corrected here.
+        """
+        script = []
+        changed = 0
+        with open(os.path.join(path_repo, "predict.py"), "r") as f:
+            script.extend(f.readlines())
+        # delete line with not defined argument
+        if "    train_path = args.train_dir\n" in script:
+            script.remove("    train_path = args.train_dir\n")
+            changed = 1
+        # change output
+        if '        results["rank"] = ranks\n' in script:
+            idx = script.index('        results["rank"] = ranks\n')
+            script[idx] = '        results["Score"] = scores\n        results["MHC"] = datasetPetideSpecific.MHC\n'
+            changed = 1
+        #correct path
+        if '        results.to_csv(args.save + target_peptide+".csv")\n' in script:
+            idx = script.index('        results.to_csv(args.save + target_peptide+".csv")\n')
+            script[idx] = '        results.to_csv(args.output + target_peptide+".csv")\n'
+            changed = 1
+        #allow cpu
+        if processor == "cpu" and '        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n' in script:
+            idx = script.index('        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n')
+            script[idx] = '        checkpoint = torch.load(args.load+"/pytorch_model.bin", map_location=torch.device("cpu"))\n'
+            changed = 1
+        if changed == 1:
+            with open("predict.py", "w") as f:
+                f.writelines(script)
