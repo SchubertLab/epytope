@@ -11,6 +11,7 @@ import abc
 import os
 import shutil
 import sys
+import warnings
 
 import pandas as pd
 
@@ -323,27 +324,63 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
             df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
-        df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope", "MHC": "HLA"})  # add MHC sequence?
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope", "MHC": "HLA"})
         df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
         df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
-        df_tcrs["binder"] = 1
-        df_tcrs["HLA"] = df_tcrs["HLA"].str[4:]  # TODO test what happens if no HLA is provided / do we need HLA?
+        df_tcrs["binder"] = 1  # TODO test what happens if no HLA is provided / do we need HLA? - for the ce chain case we do not need it
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(inplace=True, keep="first")
+        chain = "ce" if "chain" not in kwargs else kwargs["chain"]
+        if chain == "cem":
+            repository = kwargs["repository"]
+            mhcseq_filepath = os.path.join(repository, "data/hlaCovertPeudoSeq/HLAWithPseudoSeq.csv")
+            if not os.path.exists(mhcseq_filepath):
+                raise TypeError(f"Please unzip the file stored at {mhcseq_filepath}.zip to {mhcseq_filepath}")
+            data_hla = pd.read_csv(mhcseq_filepath)
+            data_hla = data_hla.rename(columns={"HLA name": "HLA_name",
+                                                "HLA PSEUDO SEQ": "MHC_seq"})
+            df_tcrs = df_tcrs[(~df_tcrs["HLA"].isna()) & (df_tcrs["HLA"] != "")]
+            df_tcrs["HLA"] = df_tcrs["HLA"].astype(str).str[4:]
+            df_tcrs = pd.merge(df_tcrs, data_hla, left_on="HLA", right_on="HLA_name", how="left")
+            df_tcrs = df_tcrs.rename(columns={"HLA_name": "HLA_exactmatch", "MHC_seq": "MHC"})
+            df_tcrs["join"] = 1
+            data_hla["join"] = 1
+            df_tcrs = df_tcrs.merge(data_hla, on="join").drop("join", axis=1)
+            df_tcrs["match"] = df_tcrs.apply(lambda x: x.HLA_name.find(x.HLA), axis=1).ge(0)
+            df_tcrs = df_tcrs[df_tcrs["match"]]
+            df_tcrs.drop_duplicates(subset=required_columns, ignore_index=True, inplace=True)
+
+            def custom_formatwarning(message, category, filename, lineno, line=''):
+                return category.__name__ + ": " + str(message) + "\n"
+    
+            warnings.formatwarning = custom_formatwarning
+            if df_tcrs["MHC"].isna().sum() > 0:
+                warnings.warn(f"{df_tcrs['MHC'].isna().sum()} entries do not have exact HLA allele matches in the MHC "
+                              f"pseudosequence dictionary provided by {self.name} tool, the first best matches were chosen instead.")
+                df_tcrs["MHC"].fillna(df_tcrs["MHC_seq"], inplace=True)
+            required_columns.append("MHC")
+            df_tcrs = df_tcrs[required_columns]
         if df_tcrs.shape[0] == 1:
             df_tcrs = pd.concat([df_tcrs] * 2).sort_index().reset_index(drop=True)
         df_tcrs.iat[0, df_tcrs.columns.get_loc("binder")] = 0
         return df_tcrs
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = "rdforestWithoutMHCModel"
+        chain = "ce" if "chain" not in kwargs else kwargs["chain"]
         if "model" in kwargs:
             model = kwargs["model"]
+        else:
+            if chain == "ce":
+                model = "rdforestWithoutMHCModel"
+            elif chain == "cem":
+                model = "rdforestWithMHCModel"
+            else:
+                raise ValueError(f"Chain {chain} incorrect. Please specify correct chain: ce or cem")
         repository = kwargs["repository"]
         model_filepath = os.path.join(repository, "models", f"{model}.pickle")
         if not os.path.exists(model_filepath):
             raise TypeError(f"Please unzip the models stored at {model_filepath}.zip to {model_filepath}")
-        return f"predict.py --testfile {filenames[0]} --modelfile {model_filepath} --chain ce >> {filenames[1]}"
+        return f"predict.py --testfile {filenames[0]} --modelfile {model_filepath} --chain {chain} >> {filenames[1]}"
 
     def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1], skiprows=14, index_col=False)
@@ -351,7 +388,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor.rename(columns={"CDR3b": "VDJ_cdr3",
                                                               "epitope": "Epitope",
                                                               "predict_proba": "Score"})
-        required_columns = ["VDJ_cdr3", "Epitope", "Score"]  # TODO: Does the model use MHC, if so add here!
+        required_columns = ["VDJ_cdr3", "Epitope", "MHC", "Score"]  # TODO: Does the model use MHC, if so add here!
         joining_list = ["VDJ_cdr3", "Epitope"]
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates()
