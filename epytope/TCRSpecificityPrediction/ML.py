@@ -15,6 +15,8 @@ import tempfile
 import pandas as pd
 import numpy as np
 import yaml
+from functools import reduce
+import operator
 from epytope.Core.Base import ATCRSpecificityPrediction
 from epytope.Core.TCREpitope import TCREpitope
 from epytope.Core.ImmuneReceptor import ImmuneReceptor
@@ -63,7 +65,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         filenames, tmp_folder = self.save_tmp_files(data, **kwargs)
         cmd = self.get_base_cmd(filenames, tmp_folder, interpreter, conda, cmd_prefix, **kwargs)
         self.run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, **kwargs)
-        df_results = self.format_results(filenames, tcrs, epitopes, pairwise, **kwargs)
+        df_results = self.format_results(filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs)
         self.clean_up(tmp_folder, filenames)
         return df_results
 
@@ -135,7 +137,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
 
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         raise NotImplementedError
 
     def transform_output(self, result_df, tcrs, epitopes, pairwise, joining_list, **kwargs):
@@ -268,7 +270,7 @@ class ImRex(ACmdTCRSpecificityPrediction):
         cmd = f"src.scripts.predict.predict --model {model} --input {filenames[0]} --output {filenames[1]}"
         return cmd
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
         results_predictor["MHC"] = results_predictor["MHC"].fillna("")
         results_predictor = results_predictor.rename(columns={"antigen.epitope": "Epitope",
@@ -432,7 +434,7 @@ class TITAN(ACmdTCRSpecificityPrediction):
         filenames[5] = f"{filenames[5]}.npy"
         super().run_exec_cmd(cmd[2], [None, filenames[5]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = np.load(filenames[5])[0]
         df_matchup = pd.read_csv(filenames[4], index_col=0)
         df_tcrs = pd.read_csv(filenames[0], index_col=0)
@@ -540,7 +542,7 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[0], sep="\t")
         scores = np.load(filenames[1])
         assert len(scores) == len(results_predictor), "Length mismatch between input and output."
@@ -584,6 +586,7 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
                 "27 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1"]
         with open(path_file, "w") as file_blosum:
             file_blosum.writelines(text)
+
 
 class STAPLER(ACmdTCRSpecificityPrediction):
     """
@@ -673,21 +676,19 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         path_paths = f"{path_config}/paths/default.yaml"
         yaml_paths = {
             "root_dir": tmp_dir.name,
-            "log_dir": f"{tmp_dir}/logs",
+            "log_dir": f"{tmp_dir.name}/logs",
             "output_dir": tmp_dir.name,
-            "work_dir": os.getcwd(),
+            "work_dir": tmp_dir.name,
         }
         with open(path_paths, "w") as file_paths:
             yaml.dump(yaml_paths, file_paths)
         paths = {
-            f"{path_config}/datamodule/train_dataset.yaml": {"test_data_path": filenames[1],
-                                                             "train_data_path": filenames[1],
-                                                             },
-            f"{path_config}/test.yaml": {"test_from_ckpt_path": f"{path_module}/../model/finetuned_model_refactored/"},
-            f"{path_config}/callbacks/train_model_checkpoint.yaml": {
-                "model_checkpoint->dirpath": f"{path_module}/../model/"},
-            f"{path_config}/model/train_medium_model.yaml": {
-                "checkpoint_path": f"{path_module}/../model/pretrained_model/pre-cdr3_combined_epoch=437-train_mlm_loss=0.702.ckpt"},
+                f"{path_config}/datamodule/train_dataset.yaml": {"test_data_path": filenames[1],
+                                                                 "train_data_path": filenames[1], 
+                                                                },
+                f"{path_config}/test.yaml": {"test_from_ckpt_path": f"{path_module}/../model/finetuned_model_refactored/"},
+                f"{path_config}/callbacks/train_model_checkpoint.yaml": {"model_checkpoint->dirpath": f"{path_module}/../model/"},
+                f"{path_config}/model/train_medium_model.yaml": {"checkpoint_path": f"{path_module}/../model/pretrained_model/pre-cdr3_combined_epoch=437-train_mlm_loss=0.702.ckpt"},
         }
         for k, v in paths.items():
             self.change_yaml(k, v)
@@ -695,12 +696,12 @@ class STAPLER(ACmdTCRSpecificityPrediction):
     def change_yaml(self, path_yaml, change_dict):
         def get_by_path(dictionary, keys):
             return reduce(operator.getitem, keys, dictionary)
-
+        
         with open(path_yaml, "r") as file_yaml:
             yaml_content = yaml.safe_load(file_yaml)
         for k, v in change_dict.items():
             levels = k.split("->")
-            get_by_path(yaml_content, levels[:-1])[levels[-1]] = v
+            get_by_path(yaml_content, levels[:-1])[levels[-1]] = v   
         with open(path_yaml, "w") as file_yaml:
             yaml.dump(yaml_content, file_yaml)
 
@@ -708,7 +709,7 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         super().run_exec_cmd(cmd[0], [None, filenames[1]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
         super().run_exec_cmd(cmd[1], [None, filenames[2]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
 
-    def format_results(self, filenames, tcrs, epitopes, pairwise, **kwargs):
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[2], index_col=0)
         rename_dict = {v: k for k, v in self._rename_columns.items()}
         rename_dict["epitope_aa"] = "Epitope"
