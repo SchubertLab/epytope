@@ -146,7 +146,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
             df_out = self.combine_tcrs_epitopes_list(df_out, epitopes)
             df_out = df_out.merge(result_df, on=joining_list, how="left")
             tuples = [("TCR", el) for el in df_out.columns][:-3]
-            tuples.extend([("Epitope", "Peptide"), ("Epitope", "MHC"), ("Method", self.name)])
+            tuples.extend([("Epitope", "Peptide"), ("Epitope", "MHC"), ("Method", self.name.lower())])
             df_out.columns = pd.MultiIndex.from_tuples(tuples)
         else:
             tuples = [('TCR', el) for el in df_out.columns]
@@ -154,12 +154,12 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
                 df_tmp = result_df[result_df["Epitope"] == epitope.peptide].copy()
                 if "MHC" in joining_list:
                     df_tmp = df_tmp[df_tmp["MHC"].astype(str) == (epitope.allele if epitope.allele else "")].copy()
-                tuples.extend([(str(epitope), self.name)])
+                tuples.extend([(str(epitope), self.name.lower())])
                 df_out = df_out.merge(df_tmp, on=[el for el in joining_list if el not in ["Epitope", "MHC"]],
                                       how="left")
                 df_out = df_out.drop(columns=["MHC", "Epitope"], errors="ignore")
             df_out.columns = pd.MultiIndex.from_tuples(tuples)
-        return df_out
+        return TCRSpecificityPredictionResult(df_out)
 
     def clean_up(self, tmp_folder, files=None):
         """
@@ -212,6 +212,7 @@ class ImRex(ACmdTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (10, 20)
     __epitope_length = (8, 11)
+    __organism = "H"
 
     @property
     def version(self):
@@ -228,6 +229,10 @@ class ImRex(ACmdTCRSpecificityPrediction):
     @property
     def epitope_length(self):
         return self.__epitope_length
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         rename_columns = {
@@ -287,6 +292,7 @@ class TITAN(ACmdTCRSpecificityPrediction):
     __version = "1.0.0"
     __tcr_length = (0, 40)  # TODO
     __epitope_length = (0, 40)  # TODO
+    __organism = "H"
     _v_regions = ['TRBV1*01', 'TRBV10-1*01', 'TRBV10-1*02', 'TRBV10-2*01', 'TRBV10-2*02', 'TRBV10-3*01', 'TRBV10-3*02',
                   'TRBV10-3*03', 'TRBV10-3*04', 'TRBV11-1*01', 'TRBV11-2*01', 'TRBV11-2*02', 'TRBV11-2*03',
                   'TRBV11-3*01', 'TRBV11-3*02', 'TRBV11-3*03', 'TRBV11-3*04', 'TRBV12-1*01', 'TRBV12-2*01',
@@ -328,6 +334,10 @@ class TITAN(ACmdTCRSpecificityPrediction):
     @property
     def epitope_length(self):
         return self.__epitope_length
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         df_tcrs = tcrs.to_pandas()
@@ -455,6 +465,7 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 40)
     __epitope_length = (0, 25)
+    __organism = "H"
 
     @property
     def version(self):
@@ -471,6 +482,10 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
     @property
     def epitope_length(self):
         return self.__epitope_length
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         rename_columns = {
@@ -583,6 +598,7 @@ class STAPLER(ACmdTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 40)  # TODO
     __epitope_length = (0, 25) # TODO
+    __organism = "H"
 
     _rename_columns = {
         "VDJ_cdr3": "cdr3_beta_aa",
@@ -608,6 +624,10 @@ class STAPLER(ACmdTCRSpecificityPrediction):
     @property
     def epitope_length(self):
         return self.__epitope_length
+    
+    @property
+    def organism(self):
+        return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
