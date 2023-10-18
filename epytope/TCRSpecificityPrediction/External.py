@@ -903,7 +903,7 @@ class PanPep(ARepoTCRSpecificityPrediction):
     __version = ""
     __tcr_length = (0, 30)  # TODO no info in paper found
     __epitope_length = (0, 30)  # TODO no info in paper found
-    __organism = "HM"
+    __organism = "H"
     __repo = "https://github.com/bm2-lab/PanPep.git"
 
     _rename_columns = {
