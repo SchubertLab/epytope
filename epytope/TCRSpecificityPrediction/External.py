@@ -795,12 +795,13 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         return [path_in, path_out], tmp_folder
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model_type = "lstm" if "model_type" not in kwargs else kwargs["model_type"]
+        model_type = "lstm" if "model" not in kwargs else kwargs["model"].split("_")[0]
         cuda = "cpu" if "cuda" not in kwargs else kwargs["cuda"]
         repository = kwargs["repository"]
         model = "lstm_vdjdb1" if "model" not in kwargs else kwargs["model"]
         model_filepath = os.path.join(repository, "models", f"{model}.pt")
-        return f"ERGO.py predict {model_type} vdjdb specific {cuda} --model_file={model_filepath} " \
+        database = "vdjdb" if "model" not in kwargs else kwargs["model"].split("_")[1][:-1]
+        return f"ERGO.py predict {model_type} {database} specific {cuda} --model_file={model_filepath} " \
                f"--train_data_file=auto --test_data_file={filenames[0]} >> {filenames[1]}"
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
