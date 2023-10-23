@@ -32,8 +32,9 @@ def tcellmatch():
     ffn.load_model(path_model, path_model)
 
     ffn.clear_test_data()
-    do_blosum = 'blosum' in path_model.lower()
-    ffn.read_vdjdb(fns=path_data, fn_blosum=path_blosum, blosum_encoding=do_blosum, chains="trb", is_train=False)
+    do_blosum = "blosum" in path_model.lower()
+    chains = "separate" if "SEPARATE" in path_model else "CONCAT"
+    ffn.read_iedb(fns=path_data, fn_blosum=path_blosum, blosum_encoding=do_blosum, chains=chains, is_train=False)
     ffn.pad_sequence(target_len=40, sequence="tcr")
     ffn.pad_sequence(target_len=25, sequence="antigen")
 

@@ -489,7 +489,7 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         rename_columns = {
-            "VDJ_cdr3": "CDR3",
+            "VDJ_cdr3": "Chain 2 CDR3 Curated",
         }
         df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
 
@@ -497,22 +497,21 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
             df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "Description"})
 
-        df_tcrs = df_tcrs[(~df_tcrs["CDR3"].isna()) & (df_tcrs["CDR3"] != "")]
-        df_tcrs["Gene"] = "trb"
+        df_tcrs = df_tcrs[(~df_tcrs["Chain 2 CDR3 Curated"].isna()) & (df_tcrs["Chain 2 CDR3 Curated"] != "")]
 
-        df_tcrs = df_tcrs[["CDR3", "Epitope", "Gene"]]
-        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3", "Epitope")
+        df_tcrs = df_tcrs[["Chain 2 CDR3 Curated", "Description"]]
+        df_tcrs = self.filter_by_length(df_tcrs, None, "Chain 2 CDR3 Curated", "Description")
         df_tcrs = df_tcrs.drop_duplicates()
         df_tcrs = df_tcrs.reset_index(drop=True)
-        df_tcrs["complex.id"] = df_tcrs.index.copy()
         return df_tcrs
 
     def save_tmp_files(self, data, **kwargs):
         tmp_folder = self.get_tmp_folder_path()
         path_in = os.path.join(tmp_folder.name, f"{self.name}_input.tsv")
         path_out = os.path.join(tmp_folder.name, f"{self.name}_output.npy")
-        data.to_csv(path_in, index=False, sep="\t")
+        data.to_csv(path_in, index=False)
         return [path_in, path_out], tmp_folder
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
@@ -543,11 +542,11 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
-        results_predictor = pd.read_csv(filenames[0], sep="\t")
+        results_predictor = pd.read_csv(filenames[0])
         scores = np.load(filenames[1])
         assert len(scores) == len(results_predictor), "Length mismatch between input and output."
         results_predictor["Score"] = scores
-        results_predictor = results_predictor.rename(columns={"CDR3": "VDJ_cdr3"})
+        results_predictor = results_predictor.rename(columns={"Chain 2 CDR3 Curated": "VDJ_cdr3", "Description": "Epitope"})
         joining_list = ["VDJ_cdr3", "Epitope"]
         results_predictor = results_predictor[joining_list + ["Score"]]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
@@ -556,33 +555,33 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
     def add_blosum(self, path_file):
         path_folder = os.sep.join(path_file.split(os.sep)[:-1])
         os.makedirs(path_folder, exist_ok=True)
-        text = ["0 # https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/BLOSUM50#L2, 2019/07/12",
-                "1 # Entries for the BLOSUM50 matrix at a scale of ln(2)/3.0.",
-                "2 _  A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *",
-                "3 A  5 -2 -1 -2 -1 -1 -1  0 -2 -1 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -2 -1 -1 -5",
-                "4 R -2  7 -1 -2 -4  1  0 -3  0 -4 -3  3 -2 -3 -3 -1 -1 -3 -1 -3 -1 -3  0 -1 -5",
-                "5 N -1 -1  7  2 -2  0  0  0  1 -3 -4  0 -2 -4 -2  1  0 -4 -2 -3  5 -4  0 -1 -5",
-                "6 D -2 -2  2  8 -4  0  2 -1 -1 -4 -4 -1 -4 -5 -1  0 -1 -5 -3 -4  6 -4  1 -1 -5",
-                "7 C -1 -4 -2 -4 13 -3 -3 -3 -3 -2 -2 -3 -2 -2 -4 -1 -1 -5 -3 -1 -3 -2 -3 -1 -5",
-                "8 Q -1  1  0  0 -3  7  2 -2  1 -3 -2  2  0 -4 -1  0 -1 -1 -1 -3  0 -3  4 -1 -5",
-                "9 E -1  0  0  2 -3  2  6 -3  0 -4 -3  1 -2 -3 -1 -1 -1 -3 -2 -3  1 -3  5 -1 -5",
-                "10 G  0 -3  0 -1 -3 -2 -3  8 -2 -4 -4 -2 -3 -4 -2  0 -2 -3 -3 -4 -1 -4 -2 -1 -5",
-                "11 H -2  0  1 -1 -3  1  0 -2 10 -4 -3  0 -1 -1 -2 -1 -2 -3  2 -4  0 -3  0 -1 -5",
-                "12 I -1 -4 -3 -4 -2 -3 -4 -4 -4  5  2 -3  2  0 -3 -3 -1 -3 -1  4 -4  4 -3 -1 -5",
-                "13 L -2 -3 -4 -4 -2 -2 -3 -4 -3  2  5 -3  3  1 -4 -3 -1 -2 -1  1 -4  4 -3 -1 -5",
-                "14 K -1  3  0 -1 -3  2  1 -2  0 -3 -3  6 -2 -4 -1  0 -1 -3 -2 -3  0 -3  1 -1 -5",
-                "15 M -1 -2 -2 -4 -2  0 -2 -3 -1  2  3 -2  7  0 -3 -2 -1 -1  0  1 -3  2 -1 -1 -5",
-                "16 F -3 -3 -4 -5 -2 -4 -3 -4 -1  0  1 -4  0  8 -4 -3 -2  1  4 -1 -4  1 -4 -1 -5",
-                "17 P -1 -3 -2 -1 -4 -1 -1 -2 -2 -3 -4 -1 -3 -4 10 -1 -1 -4 -3 -3 -2 -3 -1 -1 -5",
-                "18 S  1 -1  1  0 -1  0 -1  0 -1 -3 -3  0 -2 -3 -1  5  2 -4 -2 -2  0 -3  0 -1 -5",
-                "19 T  0 -1  0 -1 -1 -1 -1 -2 -2 -1 -1 -1 -1 -2 -1  2  5 -3 -2  0  0 -1 -1 -1 -5",
-                "20 W -3 -3 -4 -5 -5 -1 -3 -3 -3 -3 -2 -3 -1  1 -4 -4 -3 15  2 -3 -5 -2 -2 -1 -5",
-                "21 Y -2 -1 -2 -3 -3 -1 -2 -3  2 -1 -1 -2  0  4 -3 -2 -2  2  8 -1 -3 -1 -2 -1 -5",
-                "22 V  0 -3 -3 -4 -1 -3 -3 -4 -4  4  1 -3  1 -1 -3 -2  0 -3 -1  5 -3  2 -3 -1 -5",
-                "23 B -2 -1  5  6 -3  0  1 -1  0 -4 -4  0 -3 -4 -2  0  0 -5 -3 -3  6 -4  1 -1 -5",
-                "24 J -2 -3 -4 -4 -2 -3 -3 -4 -3  4  4 -3  2  1 -3 -3 -1 -2 -1  2 -4  4 -3 -1 -5",
-                "25 Z -1  0  0  1 -3  4  5 -2  0 -3 -3  1 -1 -4 -1  0 -1 -2 -2 -3  1 -3  5 -1 -5",
-                "26 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -5",
+        text = ["0 # https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/BLOSUM50#L2, 2019/07/12\n",
+                "1 # Entries for the BLOSUM50 matrix at a scale of ln(2)/3.0.\n",
+                "2 _  A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n",
+                "3 A  5 -2 -1 -2 -1 -1 -1  0 -2 -1 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -2 -1 -1 -5\n",
+                "4 R -2  7 -1 -2 -4  1  0 -3  0 -4 -3  3 -2 -3 -3 -1 -1 -3 -1 -3 -1 -3  0 -1 -5\n",
+                "5 N -1 -1  7  2 -2  0  0  0  1 -3 -4  0 -2 -4 -2  1  0 -4 -2 -3  5 -4  0 -1 -5\n",
+                "6 D -2 -2  2  8 -4  0  2 -1 -1 -4 -4 -1 -4 -5 -1  0 -1 -5 -3 -4  6 -4  1 -1 -5\n",
+                "7 C -1 -4 -2 -4 13 -3 -3 -3 -3 -2 -2 -3 -2 -2 -4 -1 -1 -5 -3 -1 -3 -2 -3 -1 -5\n",
+                "8 Q -1  1  0  0 -3  7  2 -2  1 -3 -2  2  0 -4 -1  0 -1 -1 -1 -3  0 -3  4 -1 -5\n",
+                "9 E -1  0  0  2 -3  2  6 -3  0 -4 -3  1 -2 -3 -1 -1 -1 -3 -2 -3  1 -3  5 -1 -5\n",
+                "10 G  0 -3  0 -1 -3 -2 -3  8 -2 -4 -4 -2 -3 -4 -2  0 -2 -3 -3 -4 -1 -4 -2 -1 -5\n",
+                "11 H -2  0  1 -1 -3  1  0 -2 10 -4 -3  0 -1 -1 -2 -1 -2 -3  2 -4  0 -3  0 -1 -5\n",
+                "12 I -1 -4 -3 -4 -2 -3 -4 -4 -4  5  2 -3  2  0 -3 -3 -1 -3 -1  4 -4  4 -3 -1 -5\n",
+                "13 L -2 -3 -4 -4 -2 -2 -3 -4 -3  2  5 -3  3  1 -4 -3 -1 -2 -1  1 -4  4 -3 -1 -5\n",
+                "14 K -1  3  0 -1 -3  2  1 -2  0 -3 -3  6 -2 -4 -1  0 -1 -3 -2 -3  0 -3  1 -1 -5\n",
+                "15 M -1 -2 -2 -4 -2  0 -2 -3 -1  2  3 -2  7  0 -3 -2 -1 -1  0  1 -3  2 -1 -1 -5\n",
+                "16 F -3 -3 -4 -5 -2 -4 -3 -4 -1  0  1 -4  0  8 -4 -3 -2  1  4 -1 -4  1 -4 -1 -5\n",
+                "17 P -1 -3 -2 -1 -4 -1 -1 -2 -2 -3 -4 -1 -3 -4 10 -1 -1 -4 -3 -3 -2 -3 -1 -1 -5\n",
+                "18 S  1 -1  1  0 -1  0 -1  0 -1 -3 -3  0 -2 -3 -1  5  2 -4 -2 -2  0 -3  0 -1 -5\n",
+                "19 T  0 -1  0 -1 -1 -1 -1 -2 -2 -1 -1 -1 -1 -2 -1  2  5 -3 -2  0  0 -1 -1 -1 -5\n",
+                "20 W -3 -3 -4 -5 -5 -1 -3 -3 -3 -3 -2 -3 -1  1 -4 -4 -3 15  2 -3 -5 -2 -2 -1 -5\n",
+                "21 Y -2 -1 -2 -3 -3 -1 -2 -3  2 -1 -1 -2  0  4 -3 -2 -2  2  8 -1 -3 -1 -2 -1 -5\n",
+                "22 V  0 -3 -3 -4 -1 -3 -3 -4 -4  4  1 -3  1 -1 -3 -2  0 -3 -1  5 -3  2 -3 -1 -5\n",
+                "23 B -2 -1  5  6 -3  0  1 -1  0 -4 -4  0 -3 -4 -2  0  0 -5 -3 -3  6 -4  1 -1 -5\n",
+                "24 J -2 -3 -4 -4 -2 -3 -3 -4 -3  4  4 -3  2  1 -3 -3 -1 -2 -1  2 -4  4 -3 -1 -5\n",
+                "25 Z -1  0  0  1 -3  4  5 -2  0 -3 -3  1 -1 -4 -1  0 -1 -2 -2 -3  1 -3  5 -1 -5\n",
+                "26 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -5\n",
                 "27 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1"]
         with open(path_file, "w") as file_blosum:
             file_blosum.writelines(text)
