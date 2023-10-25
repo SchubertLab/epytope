@@ -881,12 +881,13 @@ class TEINet(ARepoTCRSpecificityPrediction):
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         device = "cuda:0" if "cuda" not in kwargs else kwargs["cuda"]
-        model = f"{kwargs['repository']}/models/large_dset.pth" if "model" not in kwargs else kwargs["model"]
+        model = f"teinet_data"
+        model = f"{kwargs['repository']}/models/{model}.pth"
         if not os.path.isfile(model):  # how to check better?
             raise ValueError(
                 f"Please download model from git repository or "
                 f"https://drive.google.com/file/d/12pVozHhRcGyMBgMlhcjgcclE3wlrVO32/view?usp=sharing."
-                f" or specify the path to a model via 'model=<path>'")
+                f" or specify the path to a model in 'model={kwargs['repository']}/models/'")
         cmd = f"predict.py --dset_path {filenames[0]} --save_prediction_path {filenames[1]} "
         cmd += f"--use_column CDR3.beta --model_path {model} --device {device}"
         return cmd
