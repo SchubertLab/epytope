@@ -245,7 +245,7 @@ class ImRex(ACmdTCRSpecificityPrediction):
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs = df_tcrs.rename(columns={"Epitope": "antigen.epitope"})
-        df_tcrs = df_tcrs[["cdr3", "antigen.epitope", "MHC"]]
+        df_tcrs = df_tcrs[["cdr3", "antigen.epitope"]]
         df_tcrs = self.filter_by_length(df_tcrs, None, "cdr3", "antigen.epitope")
         df_tcrs = df_tcrs.drop_duplicates()
         df_tcrs = df_tcrs[(~df_tcrs["cdr3"].isna()) & (df_tcrs["cdr3"] != "")]
@@ -272,11 +272,11 @@ class ImRex(ACmdTCRSpecificityPrediction):
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1])
-        results_predictor["MHC"] = results_predictor["MHC"].fillna("")
+        # results_predictor["MHC"] = results_predictor["MHC"].fillna("")
         results_predictor = results_predictor.rename(columns={"antigen.epitope": "Epitope",
                                                               "prediction_score": "Score",
                                                               "cdr3": "VDJ_cdr3"})
-        joining_list = ["VDJ_cdr3", "Epitope", "MHC"]
+        joining_list = ["VDJ_cdr3", "Epitope"]#, "MHC"]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
 

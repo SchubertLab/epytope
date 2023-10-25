@@ -456,12 +456,17 @@ class TCRSpecificityPredictionResult(AResult):
         :rtype: :class:`~epytope.Core.Result.TCRSpecificityPredictionResult`
         """
         result = self
+        result = result.drop_duplicates()
         if not isinstance(others, list):
             others = [others]
         merging_tcr = self["TCR"]
         merging_tuples = [("TCR", el) for el in merging_tcr.columns]
+        if "Epitope" in self:
+            merging_tuples += [("Epitope", el) for el in ["Peptide", "MHC"]]
         for i in range(len(others)):
-            result = pandas.merge(result, others[i], on = merging_tuples, how="outer")
+            other = others[i].drop_duplicates()
+            epitope_cols = []
+            result = pandas.merge(result, other, on = merging_tuples, how="outer")
             tcr = result["TCR"]
             result.drop(["TCR"], axis=1, level=0, inplace=True)
             result.sort_index(axis=1, level=0, sort_remaining=False, inplace=True)
