@@ -74,8 +74,8 @@ class Ergo2(ARepoTCRSpecificityPrediction):
     """
     __name = "ERGO-II"
     __version = ""
-    __tcr_length = (0, 30)  # TODO
-    __epitope_length = (0, 30)  # TODO
+    __tcr_length = (0, 28)
+    __epitope_length = (0, 99999)
     __repo = "https://github.com/IdoSpringer/ERGO-II.git"
     __organism = "HM"
 
@@ -194,8 +194,8 @@ class pMTnet(ARepoTCRSpecificityPrediction):
     """
     __name = "pMTnet"
     __version = ""
-    __trc_length = (0, 40)  # todo
-    __epitope_length = (0, 40)  # todo
+    __trc_length = (0, 80)
+    __epitope_length = (0, 15)
     __cmd = "pMTnet.py"
     __organism = "H"
     __repo = "https://github.com/tianshilu/pMTnet"
@@ -413,8 +413,8 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
     """
     __name = "ATM-TCR"
     __version = ""
-    __trc_length = (0, 40)  # todo
-    __epitope_length = (0, 40)  # todo
+    __trc_length = (0, 20)
+    __epitope_length = (0, 22)
     __organism = "H"
     __repo = "https://github.com/Lee-CBG/ATM-TCR"
 
@@ -492,7 +492,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
     __name = "AttnTAP"
     __version = ""
     __trc_length = (6, 30)
-    __epitope_length = (0, 30) # TODO check one more time
+    __epitope_length = (0, 9) # TODO check one more time
     __organism = "H"
     __repo = "https://github.com/Bioinformatics7181/AttnTAP.git"
 
@@ -749,8 +749,8 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     """
     __name = "ERGO-I"
     __version = ""
-    __tcr_length = (0, 30)  # TODO found no info in paper
-    __epitope_length = (0, 30)  # TODO found no info in paper
+    __tcr_length = (0, 9999)
+    __epitope_length = (0, 9999)
     __organism = "HM"
     __repo = "https://github.com/louzounlab/ERGO.git"
 
@@ -912,8 +912,8 @@ class PanPep(ARepoTCRSpecificityPrediction):
     """
     __name = "PanPep"
     __version = ""
-    __tcr_length = (0, 30)  # TODO no info in paper found
-    __epitope_length = (0, 30)  # TODO no info in paper found
+    __tcr_length = (0, 9999)  # TODO no info in paper found
+    __epitope_length = (0, 9999)  # TODO no info in paper found
     __organism = "H"
     __repo = "https://github.com/bm2-lab/PanPep.git"
 
@@ -953,7 +953,6 @@ class PanPep(ARepoTCRSpecificityPrediction):
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs = df_tcrs.rename(columns={"Epitope": "Peptide"})
-        # df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "Peptide") #TODO no info in paper found
         df_tcrs = df_tcrs[(~df_tcrs["CDR3"].isna()) & (df_tcrs["CDR3"] != "")]
         df_tcrs = df_tcrs[required_columns]
         df_tcrs = df_tcrs.drop_duplicates()
@@ -982,7 +981,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
     __name = "DLpTCR"
     __version = ""
     __trc_length = (8, 20)
-    __epitope_length = (0, 30)  # TODO not sure, 9 for analysis, but no more info
+    __epitope_length = (9, 9)
     __organism = "H"
     __repo = "https://github.com/JiangBioLab/DLpTCR"
     _oldwdir = ""

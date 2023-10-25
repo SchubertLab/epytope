@@ -290,8 +290,8 @@ class TITAN(ACmdTCRSpecificityPrediction):
     __name = "TITAN"
     __command = "python scripts/flexible_model_eval.py"
     __version = "1.0.0"
-    __tcr_length = (0, 40)  # TODO
-    __epitope_length = (0, 40)  # TODO
+    __tcr_length = (0, 500)
+    __epitope_length = (0, 1028)
     __organism = "H"
     _v_regions = ['TRBV1*01', 'TRBV10-1*01', 'TRBV10-1*02', 'TRBV10-2*01', 'TRBV10-2*02', 'TRBV10-3*01', 'TRBV10-3*02',
                   'TRBV10-3*03', 'TRBV10-3*04', 'TRBV11-1*01', 'TRBV11-2*01', 'TRBV11-2*02', 'TRBV11-2*03',
@@ -595,8 +595,8 @@ class STAPLER(ACmdTCRSpecificityPrediction):
     """
     __name = "stapler"
     __version = ""
-    __tcr_length = (0, 40)  # TODO
-    __epitope_length = (0, 25) # TODO
+    __tcr_length = (5, 25)  # TODO
+    __epitope_length = (9, 9) # TODO
     __organism = "H"
 
     _rename_columns = {
