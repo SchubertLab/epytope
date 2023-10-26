@@ -1119,8 +1119,8 @@ class TULIP(ARepoTCRSpecificityPrediction):
     """
     __name = "TULIP-TCR"
     __version = ""
-    __tcr_length = (0, 30) #TODO check, no info found in paper
-    __epitope_length = (0, 30) #TODO check, no info found in paper
+    __tcr_length = (0, 48)
+    __epitope_length = (0, 48)
     __organism = "HM"
     __repo = "https://github.com/barthelemymp/TULIP-TCR.git"
 
