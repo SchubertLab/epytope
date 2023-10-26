@@ -1230,3 +1230,72 @@ class TULIP(ARepoTCRSpecificityPrediction):
         if changed == 1:
             with open("predict.py", "w") as f:
                 f.writelines(script)
+
+class iTCep(ARepoTCRSpecificityPrediction):
+    """
+    Author: Zhang et al.
+    Paper: https://pubmed.ncbi.nlm.nih.gov/37229205/
+    Repo: https://github.com/kbvstmd/iTCep
+    """
+    __name = "iTCep"
+    __version = ""
+    __tcr_length = (8, 21)
+    __epitope_length = (8, 11)
+    __organism = "H"
+    __repo = "https://github.com/kbvstmd/iTCep.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "CDR3"
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+    
+    @property
+    def organism(self):
+        return self.__organism
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        required_columns = list(self._rename_columns.values()) + ["peptide"]
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide"})
+        df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3", "peptide")
+        df_tcrs = df_tcrs[(~df_tcrs["CDR3"].isna()) & (df_tcrs["CDR3"] != "")]
+        df_tcrs = df_tcrs[required_columns]
+        df_tcrs = df_tcrs.drop_duplicates()
+        return df_tcrs
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        return f"predict.py --input {filenames[0]} --output {filenames[1]}"
+
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
+        results_predictor = pd.read_csv(filenames[1])
+        joining_list = ["VDJ_cdr3", "Epitope"]
+        results_predictor = results_predictor.rename(columns={"CDR3": "VDJ_cdr3",
+                                                              "peptide": "Epitope",
+                                                              "Probability": "Score"})
+        required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        results_predictor = results_predictor[required_columns]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
