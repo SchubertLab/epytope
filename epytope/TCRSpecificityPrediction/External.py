@@ -1168,8 +1168,9 @@ class TULIP(ARepoTCRSpecificityPrediction):
     
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = f"{kwargs['repository']}/model_weights/pretrained/multiTCR_s_mhcX_2_below20out" if "model" not in kwargs else kwargs["model"]
-        config = f"{kwargs['repository']}/configs/shallow.config.json" if "config" not in kwargs else kwargs["config"]
+        model = "pretrained/multiTCR_s_mhcX_2_below20out" if "model" not in kwargs else kwargs["model"]
+        model = f"{kwargs['repository']}/model_weights/{model}"
+        config = f"{kwargs['repository']}/configs/shallow.config.json"
         return f"predict.py --test_dir {filenames[0]} --modelconfig {config} --load {model} --output {tmp_folder.name}/ >> {filenames[1]}"
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):  
