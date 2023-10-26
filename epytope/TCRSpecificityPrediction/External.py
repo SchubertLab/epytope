@@ -19,6 +19,8 @@ from epytope.TCRSpecificityPrediction.ML import ACmdTCRSpecificityPrediction
 
 
 class ARepoTCRSpecificityPrediction(ACmdTCRSpecificityPrediction):
+    _repository_path = None
+
     @property
     @abc.abstractmethod
     def repo(self):
@@ -46,6 +48,8 @@ class ARepoTCRSpecificityPrediction(ACmdTCRSpecificityPrediction):
                                      f"Please provide a keyword argument repository with the path to the {self.name}.\n"
                                      f"You can obtain the repo via: \n"
                                      f"'git clone {self.repo}'")
+        self.repository_path = os.path.abspath(repository)
+
 
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         old_dir = os.getcwd()
@@ -61,7 +65,7 @@ class ARepoTCRSpecificityPrediction(ACmdTCRSpecificityPrediction):
                 cmd_conda = f"conda activate {conda} &&"
             else:
                 cmd_conda = f"conda run -n {conda}"
-        cmds.append(f"{cmd_conda} {interpreter} {repository}/{cmd}")
+        cmds.append(f"{cmd_conda} {interpreter} {cmd}")
         self.exec_cmd(" && ".join(cmds), filenames[1])
         os.chdir(old_dir)
 
@@ -153,7 +157,6 @@ class Ergo2(ARepoTCRSpecificityPrediction):
         joining_list.remove("celltype")
         results_predictor = results_predictor[joining_list + ["Score"]]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
-        print(os.curdir)
         return df_out
 
     def correct_code(self, path_repo):
@@ -261,7 +264,7 @@ class pMTnet(ARepoTCRSpecificityPrediction):
         return filenames, tmp_dir
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        repository = kwargs["repository"]
+        repository = self.repository_path
         cmd = f"pMTnet.py -input {filenames[0]} -library {repository}/library " \
               f"-output {filenames[1]} -output_log {filenames[2]}"
         return cmd
@@ -334,7 +337,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
         df_tcrs.drop_duplicates(inplace=True, keep="first")
 
         if self._model_input == "cem":
-            repository = kwargs["repository"]
+            repository = self.repository_path
             mhcseq_filepath = os.path.join(repository, "data/hlaCovertPeudoSeq/HLAWithPseudoSeq.csv")
             if not os.path.exists(mhcseq_filepath):
                 raise TypeError(f"Please unzip the file stored at {mhcseq_filepath}.zip to {mhcseq_filepath}")
@@ -369,7 +372,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         model = "rdforestWithMHCModel" if "model" not in kwargs else kwargs["model"]
-        repository = kwargs["repository"]
+        repository = self.repository_path
         model_filepath = os.path.join(repository, "models", f"{model}.pickle")
         if not os.path.exists(model_filepath):
             raise TypeError(f"Please unzip the models stored at {model_filepath}.zip to {model_filepath}")
@@ -460,7 +463,7 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
 
     def save_tmp_files(self, data, **kwargs):
         paths, tmp_folder = super().save_tmp_files(data)
-        paths[1] = os.path.join(kwargs["repository"], "result", "pred_original_ATM-TCR_input.csv")
+        paths[1] = os.path.join(self.repository_path, "result", "pred_original_ATM-TCR_input.csv")
         data.to_csv(paths[0], header=False, index=False)
         return paths, tmp_folder
 
@@ -543,7 +546,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         model = "cv_model_0_vdjdb_0" if "model" not in kwargs else kwargs["model"]
-        repository = kwargs["repository"]
+        repository = self.repository_path
         model_filepath = os.path.join(repository, "Models", f"{model}.pt")
         path_script = os.path.join("Codes", "AttnTAP_test.py")
         cmd = f"{path_script} --input_file {filenames[0]} --output_file {filenames[1]} "
@@ -622,7 +625,7 @@ class TEIM(ARepoTCRSpecificityPrediction):
         return f"{path_script}"
 
     def save_tmp_files(self, data, **kwargs):
-        repository = kwargs["repository"]
+        repository = self.repository_path
         path_in = os.path.join(repository, "inputs", "inputs_bd.csv")
         path_out = os.path.join(repository, "outputs", "sequence_level_binding.csv")
         data.to_csv(path_in)
@@ -703,7 +706,7 @@ class BERTrand(ARepoTCRSpecificityPrediction):
         return df_tcrs
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = f"{kwargs['repository']}/models/best_checkpoint" if "model" not in kwargs else kwargs["model"]
+        model = f"{self.repository_path}/models/best_checkpoint" if "model" not in kwargs else kwargs["model"]
         if not os.path.isdir(model):
             raise ValueError(
                 f"Please download and unzip model from git repository or"
@@ -806,7 +809,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         model_type = "lstm" if "model" not in kwargs else kwargs["model"].split("_")[0]
         cuda = "cpu" if "cuda" not in kwargs else kwargs["cuda"]
-        repository = kwargs["repository"]
+        repository = self.repository_path
         model = "lstm_vdjdb1" if "model" not in kwargs else kwargs["model"]
         model_filepath = os.path.join(repository, "models", f"{model}.pt")
         database = "vdjdb" if "model" not in kwargs else kwargs["model"].split("_")[1][:-1]
@@ -882,7 +885,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         device = "cuda:0" if "cuda" not in kwargs else kwargs["cuda"]
         model = f"teinet_data"
-        model = f"{kwargs['repository']}/models/{model}.pth"
+        model = f"{self.repository_path}/models/{model}.pth"
         if not os.path.isfile(model):  # how to check better?
             raise ValueError(
                 f"Please download model from git repository or "
@@ -1053,7 +1056,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         model_type = "B" if "model_type" not in kwargs else kwargs["model_type"]
         cmd_epitope = ["import sys",
-                       "sys.path.append('code')",
+                       f"sys.path.append('{self.repository_path}/code')",
                        "from Model_Predict_Feature_Extraction import *",
                        "from DLpTCR_server import *",
                        f"error_info,TCRA_cdr3,TCRB_cdr3,Epitope = deal_file('{filenames[0]}', "
@@ -1169,8 +1172,8 @@ class TULIP(ARepoTCRSpecificityPrediction):
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         model = "pretrained/multiTCR_s_mhcX_2_below20out" if "model" not in kwargs else kwargs["model"]
-        model = f"{kwargs['repository']}/model_weights/{model}"
-        config = f"{kwargs['repository']}/configs/shallow.config.json"
+        model = f"{self.repository_path}/model_weights/{model}"
+        config = f"{self.repository_path}/configs/shallow.config.json"
         return f"predict.py --test_dir {filenames[0]} --modelconfig {config} --load {model} --output {tmp_folder.name}/ >> {filenames[1]}"
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):  
@@ -1194,7 +1197,6 @@ class TULIP(ARepoTCRSpecificityPrediction):
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         processor = "cpu" if "processor" not in kwargs else kwargs["processor"]
         if repository is not None and repository != "" and os.path.isdir(repository):
-            os.chdir(repository)
             self.correct_code(repository, processor)
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
     
