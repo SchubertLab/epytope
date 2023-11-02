@@ -1,146 +1,96 @@
-__author__ = 'albahah'
-
+__author__ = "albahah,drost"
 
 import unittest
-import pandas as pd
-from tempfile import NamedTemporaryFile
-from epytope.Core import AntigenImmuneReceptor
-from epytope.Core import TCREpitope
-from epytope.Core import ImmuneReceptorChain
-from epytope.TCRSpecificityPrediction import TCRSpecificityPredictorFactory, ML
+import argparse
+import yaml
 import os
-import scirpy as ir
-from epytope.IO.FileReader import process_dataset_TCR
+import warnings
+
+from epytope.Core import TCREpitope
+from epytope.IO.IRDatasetAdapter import IRDataset
 
 
-class TestTCRSpecificityPredictionClass(unittest.TestCase):
+class TestTCRSpecificityPrediction(unittest.TestCase):
+    predictors = "all"
+    config_yaml = None
+    options_yaml = None
 
-    def setUp(self):
-        TRA1 = ImmuneReceptorChain(chain_type="TRA", v_gene="TRAV12-1*01", d_gene="", j_gene="TRAJ23*01",
-                                   cdr3="VVRAGKLI")
-        TRB1 = ImmuneReceptorChain(chain_type="TRB", v_gene="TRBV6-3*01", d_gene="", j_gene="TRBJ2-4*01",
-                                   cdr3="ASGQGNFDIQY")
-        TRA2 = ImmuneReceptorChain(chain_type="TRA", v_gene="TRAV9-2*01", d_gene="", j_gene="TRAJ43*01",
-                                   cdr3="ALSDPVNDMR")
-        TRB2 = ImmuneReceptorChain(chain_type="TRB", v_gene="TRBV11-2*01", d_gene="", j_gene="TRBJ1-5*01",
-                                   cdr3="ASSLRGRGDQPQH")
-        epitope1 = TCREpitope("FLRGRAYGL", mhc="HLA-B*08:01")
-        epitope2 = TCREpitope("HSKRKCDEL", mhc="HLA-B*08:01")
-        TCR1 = AntigenImmuneReceptor(receptor_id="1", chains=[TRA1, TRB1], cell_type="CD8")
-        TCR2 = AntigenImmuneReceptor(receptor_id="2", chains=[TRA2, TRB2], cell_type="CD8")
-        self.TCRs = [TCR1, TCR2]
-        self.epitopes = [epitope1, epitope2]
-        self.peptide = []
-        self.dataset = pd.DataFrame({"Receptor_ID": 1, "TRA": "CAVSAASGGSYIPTF", "TRB": "CASSFSGNTGELFF", "TRAV": "TRAV3", "TRAJ": "TRAJ6",
-                                "TRBV": "TRBV12-3", "TRBJ": "TRBJ2-2", "T-Cell-Type": "CD8", "Peptide": "RAKFKQLL",
-                                "MHC": "HLA-B*08", "Species": "", "Antigen.species": "", "Tissue": ""}, index=[0])
-        self.TCR = ""
-        self.vdjdb = "/home/mahmoud/Downloads/vdjdb/vdjdb_full.txt"
-        self.McPAS = "/home/mahmoud/Downloads/McPAS-TCR.csv"
-        self.IEDB = "/home/mahmoud/Downloads/tcell_receptor_table_export_1660640162.csv"
-        self.repository = {"ERGO-II": "/home/mahmoud/Documents/BA/ERGOII/ERGO-II",
-              "TITAN": "/home/mahmoud/Documents/BA/TITAN/TITAN",
-              "ImRex": "/home/mahmoud/Documents/BA/IMRex/ImRex",
-              "NetTCR2": "/home/mahmoud/Documents/BA/test/NetTCR-2.0",
-              "pMTnet": "/home/mahmoud/Documents/BA/test/pMTnet",
-              "ATM_TCR": "/home/mahmoud/Documents/BA/test/ATM-TCR"}
-        self.pMTnet_interpreter = "/home/mahmoud/anaconda3/envs/pmtnet/bin/python"
+    @classmethod
+    def setUp(cls):
+        # testing setup
+        if cls.predictors == "all":
+            cls.predictors = list(TCRSpecificityPredictorFactory.available_methods())
+        else:
+            cls.predictors = cls.predictors.split(",")
 
-    def test_TCR_specificity_prediction_multiple_input(self):
-        for m in TCRSpecificityPredictorFactory.available_methods():
-            mo = TCRSpecificityPredictorFactory(m)
-            print("\nTesting", mo.name)
-            print("Test binding specificity for each TCR to each epitope")
-            mo.predict(peptides=self.epitopes, TCRs=self.TCRs, repository=self.repository[mo.name], all=True,
-                       trained_on="vdjdb", trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                       nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter)
-            print("Test binding specificity for TCRs to the corresponding epitopes in the same passed order\n")
-            mo.predict(peptides=self.epitopes, TCRs=self.TCRs, repository=self.repository[mo.name], all=False,
-                       trained_on="vdjdb", trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                       nettcr_chain="b", pMTnet_interpreter=self.pMTnet_interpreter)
+        if cls.config_yaml is None or not os.path.exists(cls.config_yaml):
+            raise ValueError("Please provide a valid path to a configuration file for your predictors."
+                             f"Currently: {cls.config_yaml}")
+        with open(cls.config_yaml, "r") as yaml_file:
+            cls.config_yaml = yaml.safe_load(yaml_file)
 
-    def test_TCR_specificity_prediction_single_input(self):
-        for m in TCRSpecificityPredictorFactory.available_methods():
-            mo = TCRSpecificityPredictorFactory(m)
-            print("\nTesting", mo.name)
-            mo.predict(peptides=self.epitopes[0], TCRs=self.TCRs[0], repository=self.repository[mo.name], all=False,
-                       trained_on="vdjdb", trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                       nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter)
+        if cls.options_yaml is not None or not os.path.exists(cls.config_yaml):
+            raise ValueError("Please provide a valid path to an option file for your predictors."
+                             f"Currently: {cls.options_yaml}")
+        else:
+            with open(cls.options_yaml, "r") as yaml_file:
+                cls.options_yaml = yaml.safe_load(yaml_file)
 
-    def test_TCR_specificity_prediction_dataset(self):
-        tmp_file = NamedTemporaryFile(delete=False)
-        self.dataset.to_csv(tmp_file.name, sep=",", index=False)
-        for m in TCRSpecificityPredictorFactory.available_methods():
-            mo = TCRSpecificityPredictorFactory(m)
-            print("\nTesting", mo.name)
-            mo.predict_from_dataset(repository=self.repository[mo.name], path=tmp_file.name,
-                                    trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                                    nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter)
-            print("Testing on vdjdb")
-            mo.predict_from_dataset(repository=self.repository[mo.name], path=self.vdjdb, source="vdjdb",
-                                    trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                                    nettcr_chain="b", pMTnet_interpreter=self.pMTnet_interpreter)
-            print("Testing on McPAS")
-            mo.predict_from_dataset(repository=self.repository[mo.name], path=self.McPAS, source="mcpas", trained_on="McPAS",
-                                    trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                                    nettcr_chain="a", pMTnet_interpreter=self.pMTnet_interpreter)
-            print("Testing on IEDB\n")
-            mo.predict_from_dataset(repository=self.repository[mo.name], path=self.IEDB, source="IEDB",
-                                    trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                                    nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter)
-        os.remove(tmp_file.name)
+        # Sample Eptiopes
+        epitope1 = TCREpitope("FLRGRAYGL", allele="HLA-B*08:01")
+        epitope2 = TCREpitope("HSKRKCDEL", allele="HLA-A*02:01")
+        cls.epitopes = [epitope1, epitope2]
 
-    def test_wrong_input(self):
-        with self.assertRaises(ValueError):
-            mo = TCRSpecificityPredictorFactory("ergo-ii")
-            mo.predict(peptides=self.peptide, TCRs=self.TCRs, repository=self.repository[mo.name], all=True,
-                       trained_on="vdjdb", trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                       nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter)
-            mo.predict(peptides=self.epitopes, TCRs=self.TCR, repository=self.repository[mo.name], all=True,
-                       trained_on="vdjdb", trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                       nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter)
+        # Sample TCRs
+        path_data = os.path.join(os.path.dirname(__file__), "../../Data/examples/test_tcrs.csv")
+        cls.tcr_repertoire = IRDataset()
+        cls.tcr_repertoire.from_path(path_data)
 
-    def test_merging_and_filtering(self):
-        mo = TCRSpecificityPredictorFactory("ergo-ii")
-        result1 = mo.predict(peptides=self.epitopes[0], TCRs=self.TCRs[0], repository=self.repository[mo.name], all=False,
-                             trained_on="vdjdb",
-                             trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                             nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter)
-        result2 = mo.predict(peptides=self.epitopes[1], TCRs=self.TCRs[1], repository=self.repository[mo.name], all=False,
-                             trained_on="vdjdb",
-                             trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                             nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter)
-        print("\n\nTest merging")
-        print(result1.merge_results(result2))
-        print("\n\nTest filtering")
-        com = lambda x, y: x > y
-        thr = 0.7
-        expression = (mo.name, com, thr)
-        result = mo.predict(peptides=self.epitopes, TCRs=self.TCRs, repository=self.repository[mo.name], all=False,
-                            trained_on="vdjdb",
-                            trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                            nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter)
-        print(f"\nresult before filtering:\n{result}\n\nresult after filtering:\n{result.filter_result(expression)}")
+    def test_tcr_pairwise(self):
+        epitopes_pairwise = self.epitopes
+        for name in self.predictors:
+            predictor = TCRSpecificityPredictorFactory(name)
+            config_predictor = None if name not in self.config_yaml else self.config_yaml[name]
+            results = predictor.predict(self.tcr_repertoire, epitopes_pairwise, pairwise=True, **config_predictor)
 
-    def test_scirpy_format(self):
-        df = ir.datasets.wu2020().obs
-        # get all TCR seqs in scirpy format
-        df = process_dataset_TCR(df=df, source="scirpy")
-        df = df[["Receptor_ID", 'TRA', 'TRB', "TRAV", "TRAJ", "TRBV", "TRBJ", "T-Cell-Type", "Species",
-                 "Antigen.species", "Tissue"]]
-        df2 = pd.DataFrame({"Peptide": [str(pep) for pep in self.epitopes],
-                            "MHC": [pep.mhc for pep in self.epitopes]})
-        # map each TCR seq to each epitope in the epitopes list
-        df = pd.merge(df, df2, how='cross')
-        print("\n\nTesting scirpy")
-        outputs = []
-        for m in TCRSpecificityPredictorFactory.available_methods():
-            mo = TCRSpecificityPredictorFactory(m)
-            outputs.append(mo.predict_from_dataset(repository=self.repository[mo.name], df=df,
-                                              trained_model="/home/mahmoud/Documents/BA/TITAN/TITAN/public/trained_model",
-                                              nettcr_chain="ab", pMTnet_interpreter=self.pMTnet_interpreter))
-        print(pd.concat(outputs, axis=1))
+            self.assertEqual(len(results), len(tcr_repertoire.receptors), "Results have wrong length")
+            for epitope in epitopes_pairwise:
+                self.assertIn(epitope, results, f"{name}: Epitope not in result")
+                self.assertIn(name, [el.lower() for el in results[epitope].columns.tolist()],
+                              f"{name}: Method not in results")
+                self.assertLess(results[epitope].iloc[:, 0].isna().sum(), len(results),
+                                f"{name}: Method always yield NaN")
+
+    def test_tcr_list(self):
+        for name in self.predictors:
+            predictors = TCRSpecificityPredictorFactory(name)
+
+    def test_tcr_empty_input(self):
+        for name in self.predictors:
+            predictor = TestTCRSpecificityPredictionClass(name)
+
+    def test_tcr_single_input(self):
+        for name in self.predictors:
+            predictor = TestTCRSpecificityPredictionClass(name)
+
+    def test_tcr_options(self):
+        if self.options_yaml is None:
+            warnings.warn("Skipping Test for predictors options as --options_yaml was not set.")
+            return
+        for name in self.predictors:
+            predictor = TestTCRSpecificityPredictionClass(name)
+
+
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--predictors", default="all")
+    parser.add_argument("--config_yaml")
+    parser.add_argument("--options_yaml", default=None)
+    args = parser.parse_args()
+
+    TestTCRSpecificityPrediction.predictors = args.predictos
+    TestTCRSpecificityPrediction.config_yaml = args.config_yaml
+    TestTCRSpecificityPrediction.options_yaml = args.options_yaml
     unittest.main()
