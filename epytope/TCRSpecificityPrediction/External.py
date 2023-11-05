@@ -1228,7 +1228,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
             script[idx] = '        checkpoint = torch.load(args.load+"/pytorch_model.bin", map_location=torch.device("cpu"))\n'
             changed = 1
         if changed == 1:
-            with open("predict.py", "w") as f:
+            with open(os.path.join("predict.py"), "w") as f:
                 f.writelines(script)
 
 class iTCep(ARepoTCRSpecificityPrediction):
