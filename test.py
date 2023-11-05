@@ -12,7 +12,7 @@ peptide = Peptide("SYFPEITHI")
 allele = Allele("HLA-A*02:01")
 epitope_1 = TCREpitope(peptide=peptide, allele=allele)
 
-epitope_2 = TCREpitope(peptide="EAAGIGILTV", allele=None)
+epitope_2 = TCREpitope(peptide="EAAGIGILT", allele=None)
 
 path_data = '/files/McPAS-TCR.csv'
 tcr_repertoire = IRDatasetAdapterFactory("mcpas-tcr")
