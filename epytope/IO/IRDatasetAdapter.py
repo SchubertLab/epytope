@@ -162,44 +162,44 @@ class VDJdbAdapter(ATCRDatasetAdapter, IRDataset):
         n_unpaired = sum(df_irs["complex.id"] == 0)
         df_irs.loc[df_irs["complex.id"] == 0, "complex.id"] = list(range(max_index, max_index + n_unpaired))
 
-        dfs = {"TRA": df_irs[df_irs["Gene"] == "TRA"].copy(),
-               "TRB": df_irs[df_irs["Gene"] == "TRB"].copy()}
+        dfs = {"TRA": df_irs[df_irs["gene"] == "TRA"].copy(),
+               "TRB": df_irs[df_irs["gene"] == "TRB"].copy()}
         for name, df in dfs.items():
             dfs[name].index = dfs[name]["complex.id"]
-            dfs[name] = dfs[name][["Gene", "CDR3", "V", "J", "Epitope", "Species"]]
+            dfs[name] = dfs[name][["gene", "cdr3", "v.segm", "j.segm", "antigen.epitope", "antigen.species"]]
             dfs[name].columns = [f"{name} {col}" for col in dfs[name].columns]
         df_irs = dfs["TRA"].join(dfs["TRB"], how="outer")
 
-        for col in ["Epitope", "Species"]:
+        for col in ["antigen.epitope", "species"]:
             df_irs[col] = df_irs.apply(lambda x: x[f"TRA {col}"] if not x[f"TRA {col}"] != np.nan else x[f"TRB {col}"],
                                        axis=1)
 
         rename_dict = {
-            "column_organism": "Species",
+            "column_organism": "species",
             "prefix_vj_chain": "TRA ",
             "prefix_vdj_chain": "TRB ",
-            "suffix_chain_type": "Gene",
-            "suffix_cdr3": "CDR3",
-            "suffix_v_gene": "V",
-            "suffix_d_gene": "D",
-            "suffix_j_gene": "J"
+            "suffix_chain_type": "gene",
+            "suffix_cdr3": "cdr3",
+            "suffix_v_gene": "v.segm",
+            "suffix_d_gene": "d.segm",
+            "suffix_j_gene": "j.segm"
         }
 
-        df_irs["TRB D"] = None
+        df_irs["TRB d.segm"] = None
         df_irs["celltype"] = "T cell"
 
         df_irs = df_irs.fillna("")
         df_irs = df_irs.replace("nan", "")
 
         df_irs.drop_duplicates(keep="first", inplace=True)
-        df_irs = df_irs[(df_irs["TRA CDR3"] != "") | (df_irs["TRB CDR3"] != "")]
-        df_irs = df_irs[df_irs["TRA CDR3"].isna() | df_irs["TRB CDR3"]]
+        df_irs = df_irs[(df_irs["TRA cdr3"] != "") | (df_irs["TRB cdr3"] != "")]
+        df_irs = df_irs[df_irs["TRA cdr3"].isna() | df_irs["TRB cdr3"]]
 
         self.save_eptiopes(df_irs)
         self.from_dataframe(df_irs, **rename_dict)
 
     def save_eptiopes(self, df_epitopes):
-        epitopes = [TCREpitope(peptide=Peptide(ep)) for ep in df_epitopes["Epitope"]]
+        epitopes = [TCREpitope(peptide=Peptide(ep)) for ep in df_epitopes["antigen.epitope"]]
         self.epitopes = epitopes
 
     @property
