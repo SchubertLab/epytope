@@ -166,7 +166,7 @@ class VDJdbAdapter(ATCRDatasetAdapter, IRDataset):
                "TRB": df_irs[df_irs["gene"] == "TRB"].copy()}
         for name, df in dfs.items():
             dfs[name].index = dfs[name]["complex.id"]
-            dfs[name] = dfs[name][["gene", "cdr3", "v.segm", "j.segm", "antigen.epitope", "antigen.species"]]
+            dfs[name] = dfs[name][["gene", "cdr3", "v.segm", "j.segm", "antigen.epitope", "species"]]
             dfs[name].columns = [f"{name} {col}" for col in dfs[name].columns]
         df_irs = dfs["TRA"].join(dfs["TRB"], how="outer")
 
