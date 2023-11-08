@@ -531,8 +531,7 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
         if not os.path.isfile(f"{path_model}_model_settings.pkl"):
             raise ValueError(
                 f"Model {path_model}_model_settings.pkl does not exist. Please download model from  "
-                "https://www.embopress.org/action/downloadSupplement?doi=10.15252%2"
-                "Fmsb.20199416&file=msb199416-sup-0005-DatasetEV4.zip"
+                "https://doi.org/0.6084/m9.figshare.24526015"
                 f" or specify the path to a model via 'model=<path>'")
         path_utils = os.path.dirname(__file__)
         cmd = f"{path_utils}/Utils.py tcellmatch {path_model} {filenames[0]} {filenames[1]} {path_blosum}"
