@@ -170,7 +170,7 @@ class Ergo2(ARepoTCRSpecificityPrediction):
         if "    df.to_csv(sys.argv[3], sep=',', index=False)\n" not in script:
             idx = script.index("    df = predict(sys.argv[1], sys.argv[2])\n")
             script.insert(idx + 1, "    df.to_csv(sys.argv[3], sep=',', index=False)\n")
-            with open("Predict.py", "w") as f:
+            with open(os.path.join(path_repo, "Predict.py"), "w") as f:
                 f.writelines(script)
 
         # Cpu + gpu usable
@@ -181,7 +181,7 @@ class Ergo2(ARepoTCRSpecificityPrediction):
             idx = script.index("        checkpoint = torch.load(ae_file)\n")
             script[idx] = "        checkpoint = torch.load(ae_file, " \
                           "map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))\n"
-            with open("Models.py", "w") as f:
+            with open(os.path.join(path_repo, "Models.py"), "w") as f:
                 f.writelines(script)
 
         # rename folders
@@ -1228,7 +1228,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
             script[idx] = '        checkpoint = torch.load(args.load+"/pytorch_model.bin", map_location=torch.device("cpu"))\n'
             changed = 1
         if changed == 1:
-            with open("predict.py", "w") as f:
+            with open(os.path.join(path_repo, "predict.py"), "w") as f:
                 f.writelines(script)
 
 class iTCep(ARepoTCRSpecificityPrediction):
