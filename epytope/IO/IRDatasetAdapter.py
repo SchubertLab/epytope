@@ -157,49 +157,49 @@ class VDJdbAdapter(ATCRDatasetAdapter, IRDataset):
         self.epitopes = None
 
     def from_path(self, path_csv, **kwargs):
-        df_irs = pd.read_csv(path_csv, sep="\t")
+        df_irs = pd.read_csv(path_csv, sep="\t", comment="#")
         max_index = df_irs["complex.id"].max() + 1
         n_unpaired = sum(df_irs["complex.id"] == 0)
         df_irs.loc[df_irs["complex.id"] == 0, "complex.id"] = list(range(max_index, max_index + n_unpaired))
 
-        dfs = {"TRA": df_irs[df_irs["Gene"] == "TRA"].copy(),
-               "TRB": df_irs[df_irs["Gene"] == "TRB"].copy()}
+        dfs = {"TRA": df_irs[df_irs["gene"] == "TRA"].copy(),
+               "TRB": df_irs[df_irs["gene"] == "TRB"].copy()}
         for name, df in dfs.items():
             dfs[name].index = dfs[name]["complex.id"]
-            dfs[name] = dfs[name][["Gene", "CDR3", "V", "J", "Epitope", "Species"]]
+            dfs[name] = dfs[name][["gene", "cdr3", "v.segm", "j.segm", "antigen.epitope", "species"]]
             dfs[name].columns = [f"{name} {col}" for col in dfs[name].columns]
         df_irs = dfs["TRA"].join(dfs["TRB"], how="outer")
 
-        for col in ["Epitope", "Species"]:
+        for col in ["antigen.epitope", "species"]:
             df_irs[col] = df_irs.apply(lambda x: x[f"TRA {col}"] if not x[f"TRA {col}"] != np.nan else x[f"TRB {col}"],
                                        axis=1)
 
         rename_dict = {
-            "column_organism": "Species",
+            "column_organism": "species",
             "prefix_vj_chain": "TRA ",
             "prefix_vdj_chain": "TRB ",
-            "suffix_chain_type": "Gene",
-            "suffix_cdr3": "CDR3",
-            "suffix_v_gene": "V",
-            "suffix_d_gene": "D",
-            "suffix_j_gene": "J"
+            "suffix_chain_type": "gene",
+            "suffix_cdr3": "cdr3",
+            "suffix_v_gene": "v.segm",
+            "suffix_d_gene": "d.segm",
+            "suffix_j_gene": "j.segm"
         }
 
-        df_irs["TRB D"] = None
+        df_irs["TRB d.segm"] = None
         df_irs["celltype"] = "T cell"
 
         df_irs = df_irs.fillna("")
         df_irs = df_irs.replace("nan", "")
 
         df_irs.drop_duplicates(keep="first", inplace=True)
-        df_irs = df_irs[(df_irs["TRA CDR3"] != "") | (df_irs["TRB CDR3"] != "")]
-        df_irs = df_irs[df_irs["TRA CDR3"].isna() | df_irs["TRB CDR3"]]
+        df_irs = df_irs[(df_irs["TRA cdr3"] != "") | (df_irs["TRB cdr3"] != "")]
+        df_irs = df_irs[df_irs["TRA cdr3"].notna() | df_irs["TRB cdr3"].notna()]
 
         self.save_eptiopes(df_irs)
         self.from_dataframe(df_irs, **rename_dict)
 
     def save_eptiopes(self, df_epitopes):
-        epitopes = [TCREpitope(peptide=Peptide(ep)) for ep in df_epitopes["Epitope"]]
+        epitopes = [TCREpitope(peptide=Peptide(ep)) for ep in df_epitopes["antigen.epitope"]]
         self.epitopes = epitopes
 
     @property
@@ -225,22 +225,23 @@ class IEDBAdapter(ATCRDatasetAdapter, IRDataset):
         self.epitopes = None
 
     def from_path(self, path_csv, **kwargs):
-        df_irs = pd.read_csv(path_csv, low_memory=False)
-        df_irs["Chain 1 Type"] = df_irs["Chain 1 Type"].replace({"alpha": "TRA", "gamma": "TRG"})
-        df_irs["Chain 2 Type"] = df_irs["Chain 2 Type"].replace({"beta": "TRB", "delta": "TRD"})
-        df_irs = df_irs.rename(columns={"Chain 1 Type": "Calculated Chain 1 Type",
-                                        "Chain 2 Type": "Calculated Chain 2 Type",
-                                        "Chain 1 CDR3 Calculated": "Calculated Chain 1 CDR3",
-                                        "Chain 2 CDR3 Calculated": "Calculated Chain 2 CDR3",
+        df_irs = pd.read_csv(path_csv, low_memory=False, header=[0,1], comment="#")
+        df_irs.columns = df_irs.columns.map('|'.join)
+        df_irs["Chain 1|Type"] = df_irs["Chain 1|Type"].replace({"alpha": "TRA", "gamma": "TRG"})
+        df_irs["Chain 2|Type"] = df_irs["Chain 2|Type"].replace({"beta": "TRB", "delta": "TRD"})
+        df_irs = df_irs.rename(columns={"Chain 1|Type": "Chain 1|Calculated Type",
+                                        "Chain 2|Type": "Chain 2|Calculated Type",
+                                        "Chain 1|CDR3 Calculated": "Chain 1|Calculated CDR3",
+                                        "Chain 2|CDR3 Calculated": "Chain 2|Calculated CDR3",
                                         })
 
-        for col in ["Calculated Chain 1 CDR3", "Calculated Chain 2 CDR3"]:
+        for col in ["Chain 1|Calculated CDR3", "Chain 2|Calculated CDR3"]:
             df_irs[col] = df_irs[col].apply(lambda x: x if x == "" else f"C{x}F")
 
         rename_dict = {
-            "column_celltype": "Response Type",
-            "prefix_vj_chain": "Calculated Chain 1 ",
-            "prefix_vdj_chain":  "Calculated Chain 2 ",
+            "column_celltype": "Assay|Type",
+            "prefix_vj_chain": "Chain 1|Calculated ",
+            "prefix_vdj_chain":  "Chain 2|Calculated ",
             "suffix_chain_type": "Type",
             "suffix_cdr3": "CDR3",
             "suffix_v_gene": "V Gene",
@@ -250,30 +251,30 @@ class IEDBAdapter(ATCRDatasetAdapter, IRDataset):
         df_irs = df_irs.replace("nan", "")
         df_irs["organism"] = ""
 
-        keep_cols = ["Response Type", "organism", "Calculated Chain 1 V Gene", "Calculated Chain 1 J Gene",
-                     "Calculated Chain 1 CDR3", "Calculated Chain 1 Type", "Calculated Chain 2 V Gene",
-                     "Calculated Chain 2 D Gene", "Calculated Chain 2 J Gene",
-                     "Calculated Chain 2 CDR3", "Calculated Chain 2 Type", "Description", "MHC Allele Names"]
+        keep_cols = ["Assay|Type", "organism", "Chain 1|Calculated V Gene", "Chain 1|Calculated J Gene",
+                     "Chain 1|Calculated CDR3", "Chain 1|Calculated Type", "Chain 2|Calculated V Gene",
+                     "Chain 2|Calculated D Gene", "Chain 2|Calculated J Gene",
+                     "Chain 2|Calculated CDR3", "Chain 2|Calculated Type", "Epitope|Name", "Assay|MHC Allele Names"]
         df_irs = df_irs[keep_cols]
         df_irs = df_irs.fillna("")
 
-        for col in ["Calculated Chain 1 CDR3", "Calculated Chain 2 CDR3", "Description"]:
+        for col in ["Chain 1|Calculated CDR3", "Chain 2|Calculated CDR3", "Epitope|Name"]:
             df_irs = df_irs[df_irs[col].str.match("^[ACDEFGHIKLMNPQRSTVWY]*$")]
 
         df_irs.drop_duplicates(keep="first", inplace=True)
-        df_irs = df_irs[(df_irs["Calculated Chain 1 CDR3"] != "") | (df_irs["Calculated Chain 2 CDR3"] != "")]
-        df_irs = df_irs[df_irs["Calculated Chain 1 CDR3"].isna() | df_irs["Calculated Chain 2 CDR3"]]
+        df_irs = df_irs[(df_irs["Chain 1|Calculated CDR3"] != "") | (df_irs["Chain 2|Calculated CDR3"] != "")]
+        df_irs = df_irs[df_irs["Chain 1|Calculated CDR3"].isna() | df_irs["Chain 2|Calculated CDR3"]]
 
         self.save_eptiopes(df_irs)
         self.from_dataframe(df_irs, **rename_dict)
 
     def save_eptiopes(self, df_epitopes):
         epitopes = []
-        for i, row in df_epitopes[["Description", "MHC Allele Names"]].iterrows():
-            if row["Description"] != "":
-                new_epitope = TCREpitope(peptide=Peptide(row["Description"]),
-                                         allele=row["MHC Allele Names"].split(",")[0]
-                                         if row["MHC Allele Names"] != "" else None)
+        for i, row in df_epitopes[["Epitope|Name", "Assay|MHC Allele Names"]].iterrows():
+            if row["Epitope|Name"] != "":
+                new_epitope = TCREpitope(peptide=Peptide(row["Epitope|Name"]),
+                                         allele=row["Assay|MHC Allele Names"].split(",")[0]
+                                         if row["Assay|MHC Allele Names"] != "" else None)
             else:
                 new_epitope = None
             epitopes.append(new_epitope)
@@ -301,7 +302,7 @@ class McPasAdapter(ATCRDatasetAdapter, IRDataset):
         self.epitopes = None
 
     def from_path(self, path_csv, **kwargs):
-        df_irs = pd.read_csv(path_csv, encoding='cp1252', low_memory=False)
+        df_irs = pd.read_csv(path_csv, encoding='cp1252', low_memory=False, comment="#")
         df_irs = df_irs.rename(columns={"CDR3.alpha.aa": "TRACDR3", "CDR3.beta.aa": "TRBCDR3"})
         rename_dict = {
             "prefix_vj_chain": "TRA",
