@@ -3,11 +3,12 @@ __author__ = "albahah,drost"
 import unittest
 import argparse
 import yaml
+import re
 import os
 import sys
 import warnings
 
-from epytope.Core import TCREpitope
+from epytope.Core import TCREpitope, Allele
 from epytope.IO.IRDatasetAdapter import IRDataset
 from epytope.TCRSpecificityPrediction import TCRSpecificityPredictorFactory
 
@@ -26,6 +27,17 @@ class TestTCRSpecificityPrediction(unittest.TestCase):
         else:
             cls.predictors = cls.predictors.split(",")
 
+        _var_matcher = re.compile(r"\${([^}^{]+)}")
+        _tag_matcher = re.compile(r"[^$]*\${([^}^{]+)}.*")
+        def _path_constructor(_loader, node):
+            def replace_fn(match):
+                envparts = f"{match.group(1)}:".split(":")
+                return os.environ.get(envparts[0], envparts[1])
+
+            return _var_matcher.sub(replace_fn, node.value)
+        yaml.add_implicit_resolver("!envvar", _tag_matcher, None, yaml.SafeLoader)
+        yaml.add_constructor("!envvar", _path_constructor, yaml.SafeLoader)
+
         if cls.config_yaml is None or not os.path.exists(cls.config_yaml):
             raise ValueError("Please provide a valid path to a configuration file for your predictors."
                              f"Currently: {cls.config_yaml}")
@@ -40,8 +52,9 @@ class TestTCRSpecificityPrediction(unittest.TestCase):
                 cls.options_yaml = yaml.safe_load(yaml_file)
 
         # Sample Eptiopes
-        epitope1 = TCREpitope("FLRGRAYGL", allele="HLA-B*08:01")
-        epitope2 = TCREpitope("HSKRKCDEL", allele="HLA-A*02:01")
+
+        epitope1 = TCREpitope("FLRGRAYGL", allele=Allele("HLA-B*08:01"))
+        epitope2 = TCREpitope("HSKRKCDEL", allele=Allele("HLA-A*02:01"))
         cls.epitopes = [epitope1, epitope2]
 
         # Sample TCRs

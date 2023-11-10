@@ -531,8 +531,7 @@ class TCellMatch(ACmdTCRSpecificityPrediction):
         if not os.path.isfile(f"{path_model}_model_settings.pkl"):
             raise ValueError(
                 f"Model {path_model}_model_settings.pkl does not exist. Please download model from  "
-                "https://www.embopress.org/action/downloadSupplement?doi=10.15252%2"
-                "Fmsb.20199416&file=msb199416-sup-0005-DatasetEV4.zip"
+                "https://doi.org/0.6084/m9.figshare.24526015"
                 f" or specify the path to a model via 'model=<path>'")
         path_utils = os.path.dirname(__file__)
         cmd = f"{path_utils}/Utils.py tcellmatch {path_model} {filenames[0]} {filenames[1]} {path_blosum}"
@@ -641,6 +640,8 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope_aa"})
         df_tcrs = self.filter_by_length(df_tcrs, "cdr3_alpha_aa", "cdr3_beta_aa", "epitope_aa")
         df_tcrs = df_tcrs[list(self._rename_columns.values()) + ["epitope_aa", "organism"]]
+        for col in self._rename_columns.values():
+            df_tcrs = df_tcrs[(~df_tcrs[col].isna()) & (df_tcrs[col]!='nan')]
         df_tcrs["label_true_pair"] =  0
         df_tcrs = df_tcrs.drop_duplicates()
         return df_tcrs
