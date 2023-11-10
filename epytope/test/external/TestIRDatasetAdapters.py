@@ -40,7 +40,7 @@ class TestIRDatasetAdapters(unittest.TestCase):
             tcr_repertoire = IRDatasetAdapterFactory(name)
             tcr_repertoire.from_path(self.path_data[name])
             result = tcr_repertoire.to_pandas()
-            self.assertEqual(len(result), 16, f"{name}: Length result is different from 20")
+            self.assertEqual(len(result), 16, f"{name}: Length result is different from 16")
             self.assertLess(result["VDJ_chain_type"].isna().sum(), len(result), f"{name}: Method always yield NaN")
             self.assertLess(result["VDJ_cdr3"].isna().sum(), len(result), f"{name}: Method always yield NaN")
             self.assertLess(result["VJ_chain_type"].isna().sum(), len(result), f"{name}: Method always yield NaN")
