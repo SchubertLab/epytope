@@ -4,7 +4,7 @@
 """
 .. module:: TCRSpecificityPrediction
    :synopsis: This module contains all classes for external TCR specificity prediction methods.
-.. moduleauthor:: albahah, drost
+.. moduleauthor:: albahah, drost, chernysheva
 """
 
 import abc
@@ -348,11 +348,9 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
             df_tcrs["HLA"] = df_tcrs["HLA"].astype(str).str[4:]
             df_tcrs = pd.merge(df_tcrs, data_hla, left_on="HLA", right_on="HLA_name", how="left")
             df_tcrs = df_tcrs.rename(columns={"HLA_name": "HLA_exactmatch", "MHC_seq": "MHC"})
-            df_tcrs["join"] = 1
-            data_hla["join"] = 1
-            df_tcrs = df_tcrs.merge(data_hla, on="join").drop("join", axis=1)
-            df_tcrs["match"] = df_tcrs.apply(lambda x: x.HLA_name.find(x.HLA), axis=1).ge(0)
-            df_tcrs = df_tcrs[df_tcrs["match"]]
+            data_hla["HLA_name"] = data_hla["HLA_name"].astype(str).str[:7]
+            data_hla.drop_duplicates(subset="HLA_name", inplace=True)
+            df_tcrs = pd.merge(df_tcrs, data_hla, left_on="HLA", right_on="HLA_name", how="left")
             df_tcrs.drop_duplicates(subset=required_columns, ignore_index=True, inplace=True)
 
             def custom_formatwarning(message, category, filename, lineno, line=''):
@@ -365,6 +363,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
                 df_tcrs["MHC"].fillna(df_tcrs["MHC_seq"], inplace=True)
             required_columns.append("MHC")
             df_tcrs = df_tcrs[required_columns]
+            print(df_tcrs)
         if df_tcrs.shape[0] == 1:
             df_tcrs = pd.concat([df_tcrs] * 2).sort_index().reset_index(drop=True)
         df_tcrs.iat[0, df_tcrs.columns.get_loc("binder")] = 0
