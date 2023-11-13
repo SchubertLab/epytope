@@ -23,5 +23,5 @@ tcr_repertoire.receptors = tcr_repertoire.receptors[:100]
 
 
 predictor = TCRSpecificityPredictorFactory("stapler")
-results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/STAPLER", conda="epytope_stapler", pairwise=False)
+results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/STAPLER", conda="ergo", pairwise=False)
 print(results)
