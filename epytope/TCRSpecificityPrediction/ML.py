@@ -133,7 +133,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         if "m_cmd" in kwargs and not kwargs["m_cmd"]:
             cmds.append(f"{cmd_conda} {interpreter} {cmd}")
         else:
-            cmds.append(f"{cmd_conda} {interpreter} -m {cmd}")
+            cmds.append(f"{cmd_conda} HYDRA_FULL_ERROR=1 {interpreter} -m {cmd}")
 
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
