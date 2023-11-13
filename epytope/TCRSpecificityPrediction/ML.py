@@ -653,6 +653,7 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
         path_out = os.path.join(tmp_folder.name, "predictions_5_fold_ensamble.csv")
         data.to_csv(path_in_raw)
+        print(data)
         return [path_in_raw, path_in, path_out], tmp_folder
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
