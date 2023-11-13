@@ -363,7 +363,6 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
                 df_tcrs["MHC"].fillna(df_tcrs["MHC_seq"], inplace=True)
             required_columns.append("MHC")
             df_tcrs = df_tcrs[required_columns]
-            print(df_tcrs)
         if df_tcrs.shape[0] == 1:
             df_tcrs = pd.concat([df_tcrs] * 2).sort_index().reset_index(drop=True)
         df_tcrs.iat[0, df_tcrs.columns.get_loc("binder")] = 0
