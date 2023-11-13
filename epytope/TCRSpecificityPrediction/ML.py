@@ -68,7 +68,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         self.run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, **kwargs)
         df_results = self.format_results(filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs)
         self.clean_up(tmp_folder, filenames)
-        return 0
+        return df_results
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         raise NotImplementedError
@@ -134,7 +134,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         if "m_cmd" in kwargs and not kwargs["m_cmd"]:
             cmds.append(f"{cmd_conda} {interpreter} {cmd}")
         else:
-            cmds.append(f"{cmd_conda} HYDRA_FULL_ERROR=1 {interpreter} -m {cmd}")
+            cmds.append(f"{cmd_conda} {interpreter} -m {cmd}")
 
         self.exec_cmd(" && ".join(cmds), filenames[1])
 
@@ -653,14 +653,11 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
         path_out = os.path.join(tmp_folder.name, "predictions_5_fold_ensamble.csv")
         data.to_csv(path_in_raw)
-        print(data)
         return [path_in_raw, path_in, path_out], tmp_folder
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         path_utils = os.path.dirname(__file__)
         cmd_reconstruct = f"{path_utils}/Utils.py stapler {filenames[0]} {filenames[1]}"
-        import shutil
-        shutil.copyfile(filenames[0], "/stapler_in_0.csv")
 
         path_module = self.get_package_dir("stapler", interpreter, conda, cmd_prefix).split(os.sep)[:-1]
         path_module = os.sep.join(path_module)
