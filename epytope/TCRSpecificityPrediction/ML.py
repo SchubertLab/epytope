@@ -68,7 +68,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
         #self.run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, **kwargs)
         #df_results = self.format_results(filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs)
         #self.clean_up(tmp_folder, filenames)
-        return df_results
+        return 0
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         raise NotImplementedError
