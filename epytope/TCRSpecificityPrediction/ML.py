@@ -666,7 +666,7 @@ class STAPLER(ACmdTCRSpecificityPrediction):
             raise ValueError(f"Model {path_models} does not exist. Please download the models from  "
                              f"https://files.aiforoncology.nl/stapler/´to {path_models}")
 
-        cmd_predict = f"HYDRA_FULL_ERROR=1 {path_module}/../tools/test.py"
+        cmd_predict = f"{path_module}/../tools/test.py"
 
         self.change_configs(path_module, tmp_folder, filenames)
         return [cmd_reconstruct, cmd_predict]
