@@ -661,7 +661,6 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         cmd_reconstruct = f"{path_utils}/Utils.py stapler {filenames[0]} {filenames[1]}"
         import shutil
         shutil.copyfile(filenames[0], "/stapler_in_0.csv")
-        shutil.copyfile(filenames[1], "/stapler_in.csv")
 
         path_module = self.get_package_dir("stapler", interpreter, conda, cmd_prefix).split(os.sep)[:-1]
         path_module = os.sep.join(path_module)
