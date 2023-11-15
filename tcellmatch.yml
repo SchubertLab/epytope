@@ -1,4 +1,4 @@
-name: tcellmatch
+name: atm
 channels:
   - pytorch
   - conda-forge
