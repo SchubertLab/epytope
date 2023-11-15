@@ -23,5 +23,5 @@ tcr_repertoire.receptors = tcr_repertoire.receptors[:100]
 
 
 predictor = TCRSpecificityPredictorFactory("tcellmatch")
-results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/tcellmatch", conda="ergo", pairwise=False)
+results = predictor.predict(tcr_repertoire, [epitope_1] * len(tcr_repertoire.receptors), repository="/tcellmatch", conda="atm", pairwise=False)
 print(results)
