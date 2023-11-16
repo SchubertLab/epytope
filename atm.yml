@@ -1,4 +1,4 @@
-name: atm
+name: epytope_torch11
 channels:
   - defaults
 dependencies:
