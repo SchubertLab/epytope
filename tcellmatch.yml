@@ -1,4 +1,4 @@
-name: epytope
+name: epytope_numpy195
 channels:
   - defaults
 dependencies:
