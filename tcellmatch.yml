@@ -1,4 +1,4 @@
-name: atm
+name: epytope_tf20
 channels:
   - pytorch
   - conda-forge
