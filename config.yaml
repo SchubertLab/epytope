@@ -1,0 +1,42 @@
+bertrand: 
+        repository: ${PATH_EPYTOPE}/external/bertrand
+        conda: epytope_torch11
+imrex: 
+        conda: epytope_tf21
+ergo-ii: 
+        repository: ${PATH_EPYTOPE}/external/ERGO-II
+        conda: epytope_torch11
+ergo-i: 
+        repository: ${PATH_EPYTOPE}/external/ERGO
+        conda: epytope_torch11
+titan: 
+        conda: epytope_torch11
+teinet: 
+        repository: ${PATH_EPYTOPE}/external/TEINet
+        conda: epytope_torch11
+epitcr: 
+        repository: ${PATH_EPYTOPE}/external/epiTCR
+        conda: epytope_torch10
+atm-tcr: 
+        repository: ${PATH_EPYTOPE}/external/ATM-TCR
+        conda: epytope_torch10
+        cuda: True
+dlptcr: 
+        repository: ${PATH_EPYTOPE}/external/DLpTCR
+        conda: epytope_tf21
+pmtnet: 
+        repository: ${PATH_EPYTOPE}/external/pMTnet
+        conda: epytope_tf20
+attntap: 
+        repository: ${PATH_EPYTOPE}/external/AttnTAP
+        conda: epytope_torch11
+teim: 
+        repository: ${PATH_EPYTOPE}/external/TEIM
+        conda: epytope_torch10
+panpep:
+        repository: ${PATH_EPYTOPE}/external/PanPep
+        conda: epytope_torch10
+stapler: 
+        conda: epytope_stapler
+tcellmatch:
+        conda: epytope_tf20
