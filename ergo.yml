@@ -1,4 +1,4 @@
-name: ergo
+name: epytope_torch21
 channels:
   - defaults
 dependencies:
