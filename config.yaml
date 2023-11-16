@@ -39,4 +39,4 @@ panpep:
 stapler: 
         conda: epytope_stapler
 tcellmatch:
-        conda: epytope_tf20
+        conda: epytope_numpy195
