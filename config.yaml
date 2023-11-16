@@ -31,7 +31,7 @@ attntap:
         repository: ${PATH_EPYTOPE}/../AttnTAP
         conda: epytope
 teim: 
-        repository: ${PATH_EPYTOPE}../TEIM
+        repository: ${PATH_EPYTOPE}/../TEIM
         conda: epytope
 panpep:
         repository: ${PATH_EPYTOPE}/../PanPep
