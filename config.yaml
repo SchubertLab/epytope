@@ -1,4 +1,4 @@
-bertrand: 
+tobertrand: 
         repository: ${PATH_EPYTOPE}/../bertrand
         conda: epytope
 imrex: 
@@ -23,7 +23,7 @@ atm-tcr:
         cuda: True
 dlptcr: 
         repository: ${PATH_EPYTOPE}/../DLpTCR
-        conda: deepTCR
+        conda: epytope
 pmtnet: 
         repository: ${PATH_EPYTOPE}/../pMTnet
         conda: epytope_torch21
