@@ -10,7 +10,7 @@ ergo-i:
         repository: ${PATH_EPYTOPE}/../ERGO
         conda: epytope_torch21
 titan: 
-        conda: epytope_torch11
+        conda: epytope_torch11_1
 teinet: 
         repository: ${PATH_EPYTOPE}/../TEINet
         conda: epytope_torch11
