@@ -42,6 +42,11 @@ RUN git clone https://github.com/IdoSpringer/ERGO-II.git
 #bertrand - works
 WORKDIR /
 RUN git clone https://github.com/SFGLab/bertrand.git
+WORKDIR /bertrand
+RUN mkdir /models
+WORKDIR /
+RUN pip install gdown && gdown https://drive.google.com/uc?id=1FywbDbzhhYbwf99MdZrpYQEbXmwX9Zxm
+RUN unzip /bertrand-checkpoint.zip -d /bertrand/models
 #ImRex - works
 WORKDIR /
 RUN git clone https://github.com/pmoris/ImRex.git
@@ -94,12 +99,6 @@ WORKDIR /tcellmatch
 RUN wget -O models.zip https://figshare.com/ndownloader/files/43082557
 RUN unzip models.zip
 RUN mv msb199416-sup-0005-DatasetEV4 models
-#bertrand
-WORKDIR /bertrand
-RUN mkdir /models
-WORKDIR /
-RUN pip install gdown && gdown https://drive.google.com/uc?id=1FywbDbzhhYbwf99MdZrpYQEbXmwX9Zxm
-RUN unzip /bertrand-checkpoint.zip -d /bertrand/models
 #envs
 RUN conda env create -f /epytope/ergo.yml
 RUN conda env create -f /epytope/atm.yml
