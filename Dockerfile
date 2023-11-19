@@ -121,8 +121,6 @@ RUN pip install x-transformers==0.22.3
 WORKDIR /TITAN
 SHELL ["conda", "run", "-n", "epytope_torch11_1", "/bin/bash", "-c"]
 RUN pip install -e .
-SHELL ["conda", "run", "-n", "deepTCR", "/bin/bash", "-c"]
-RUN pip install xlrd==1.2.0 && pip install keras==2.3.1
 WORKDIR /epytope
 SHELL ["conda", "run", "-n", "epytope", "/bin/bash", "-c"]
 RUN pip install -e .
