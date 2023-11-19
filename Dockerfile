@@ -12,6 +12,7 @@ RUN conda env create -f /epytope/environment.yml
 SHELL ["/bin/bash", "-c"]
 
 COPY files /files
+#TEIM
 WORKDIR /
 RUN git clone https://github.com/pengxingang/TEIM.git
 #epiTCR - works
