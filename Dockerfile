@@ -4,7 +4,7 @@ RUN apt-get update
 RUN apt-get update && apt-get upgrade -y && apt-get install gcc --yes
 RUN apt-get update && apt-get install -y git
 RUN apt-get update && apt-get install vim -y
-#ENV PATH=/opt/conda/envs:$PATH
+
 WORKDIR /
 RUN git clone -b ac_docker2 https://github.com/SchubertLab/epytope.git
 RUN apt-get -y update && apt-get install unzip
