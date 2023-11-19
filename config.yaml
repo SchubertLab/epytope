@@ -1,4 +1,4 @@
-tobertrand: 
+bertrand: 
         repository: ${PATH_EPYTOPE}/../bertrand
         conda: epytope
 imrex: 
