@@ -123,6 +123,9 @@ RUN pip install -e .
 RUN pip install torch==2.1.0 torchaudio==2.1.0 torchvision==0.16
 RUN stitchrdl -s human
 RUN pip install x-transformers==0.22.3
+WORKDIR /ANARCI
+SHELL ["conda", "run", "-n", "epytope_stapler", "/bin/bash", "-c"]
+RUN python setup.py install
 WORKDIR /TITAN
 SHELL ["conda", "run", "-n", "epytope_torch11_1", "/bin/bash", "-c"]
 RUN pip install -e .
