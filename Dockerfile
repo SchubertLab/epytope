@@ -100,6 +100,10 @@ WORKDIR /tcellmatch
 RUN wget -O models.zip https://figshare.com/ndownloader/files/43082557
 RUN unzip models.zip
 RUN mv msb199416-sup-0005-DatasetEV4 models
+#NetTCR-2.2
+WORKDIR /
+RUN git clone https://github.com/mnielLab/NetTCR-2.2.git
+RUN git clone https://github.com/oxpig/ANARCI.git
 #envs
 RUN conda env create -f /epytope/ergo.yml
 RUN conda env create -f /epytope/atm.yml
