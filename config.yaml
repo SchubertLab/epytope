@@ -42,4 +42,4 @@ tcellmatch:
         conda: epytope_numpy195
 nettcr:
         repository: ${PATH_EPYTOPE}/../NetTCR-2.2
-        conda: epytope_torch11
+        conda: epytope_stapler
