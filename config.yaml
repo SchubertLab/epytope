@@ -40,3 +40,6 @@ stapler:
         conda: epytope_stapler
 tcellmatch:
         conda: epytope_numpy195
+nettcr:
+        repositoryL ${PATH_EPYTOPE}/../NetTCR-2.2
+        conda: epytope_torch11
