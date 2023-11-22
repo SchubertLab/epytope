@@ -1354,7 +1354,7 @@ class NetTCR22(ARepoTCRSpecificityPrediction):
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide"})
         for col in self._rename_columns.values():
-            df_tcrs = df_tcrs[(df_tcrs[col].notna()) & (df_tcrs[col]!="")]
+            df_tcrs = df_tcrs[(~df_tcrs[col].isna()) & (df_tcrs[col]!='nan') & (df_tcrs[col]!="")]
         df_tcrs = df_tcrs.drop_duplicates()
         df_tcrs["binder"] =  0
         return df_tcrs
