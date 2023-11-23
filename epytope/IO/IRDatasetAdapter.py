@@ -4,7 +4,7 @@
 """
 .. module:: IO.TCRDatasetAdapter
    :synopsis: Module handles reading of common TCR dataset file formats.
-.. moduleauthor:: albahah, drost
+.. moduleauthor:: albahah, drost, chernysheva
 
 """
 import pandas as pd
@@ -431,6 +431,10 @@ class AIRRAdapter(ScirpyAdapter, IRDataset):
     __version = "scirpy:0.10.1"
 
     def __init__(self):
+        """
+        The sample data epytope/Data/examples/test_airr_example_{alpha, beta}.tsv utilized for the AIRR data loader
+        was sourced from https://github.com/scverse/scirpy/tree/main/docs/tutorials/example_data/immunesim_airr, created by immuneSIM [Weber et al. 2020]
+        """
         super().__init__()
 
     @property
