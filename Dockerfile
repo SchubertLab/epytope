@@ -52,6 +52,7 @@ RUN unzip /bertrand-checkpoint.zip -d /bertrand/models
 WORKDIR /
 RUN git clone https://github.com/pmoris/ImRex.git
 RUN conda env create -f /ImRex/environment.yml
+RUN conda rename -n deepTCR epytope_tf21
 #TITAN
 WORKDIR /
 RUN git clone https://github.com/PaccMann/TITAN.git
