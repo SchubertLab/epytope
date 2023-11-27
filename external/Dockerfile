@@ -22,12 +22,12 @@ RUN wget -O J_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT
 WORKDIR /TITAN/datasets/imgt
 RUN wget -O V_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Homo_sapiens/TR/TRBV.fasta
 #envs
-RUN conda env create -f /epytope/environment.yml
+RUN conda env create -f /epytope/external/environment.yml
 RUN conda env create -f /ImRex/environment.yml
-RUN conda env create -f /epytope/ergo.yml
-RUN conda env create -f /epytope/atm.yml
-RUN conda env create -f /epytope/tcellmatch.yml
-RUN conda env create -f /epytope/titan.yml
+RUN conda env create -f /epytope/external/ergo.yml
+RUN conda env create -f /epytope/external/atm.yml
+RUN conda env create -f /epytope/external/tcellmatch.yml
+RUN conda env create -f /epytope/external/titan.yml
 RUN conda create --name epytope_stapler python=3.9
 WORKDIR /tcellmatch
 SHELL ["conda", "run", "-n", "epytope_numpy195", "/bin/bash", "-c"]
