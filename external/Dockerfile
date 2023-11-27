@@ -13,11 +13,6 @@ SHELL ["/bin/bash", "-c"]
 
 WORKDIR /
 RUN /bin/sh -c "/epytope/external/download.sh"
-#ImRex - works
-WORKDIR /
-RUN git clone https://github.com/pmoris/ImRex.git
-RUN conda env create -f /ImRex/environment.yml
-RUN conda rename -n deepTCR epytope_tf21
 #TITAN
 WORKDIR /
 RUN git clone https://github.com/PaccMann/TITAN.git
@@ -28,6 +23,7 @@ RUN wget -O J_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT
 WORKDIR /TITAN/datasets/imgt
 RUN wget -O V_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Homo_sapiens/TR/TRBV.fasta
 #envs
+RUN conda env create -f /ImRex/environment.yml
 RUN conda env create -f /epytope/ergo.yml
 RUN conda env create -f /epytope/atm.yml
 RUN conda env create -f /epytope/tcellmatch.yml
