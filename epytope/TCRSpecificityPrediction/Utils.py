@@ -6,7 +6,7 @@
 .. module:: TCRSpecficityPrediction.Utils
    :synopsis: This module contains utility functions, which need to be executed in a seperate environment
    due to model conflicts.
-.. moduleauthor:: drost
+.. moduleauthor:: drost, chernysheva
 """
 
 import argparse
@@ -42,21 +42,23 @@ def tcellmatch():
     np.save(path_out, ffn.predictions)
 
 
-def stapler_reconstruction():
+def fullseq_reconstruction():
     try:
         from Stitchr import stitchrfunctions as fxn
         from Stitchr import stitchr as st
     except:
-        raise ImportError("STAPLER requires full TCR sequences, which are derived from the CDR3 and V+J-genes. For this, please install Stitchr to the environment of STAPLER.")
+        raise ImportError("The tool requires full TCR sequences, which are derived from the CDR3 and V+J-genes. For this, please install Stitchr to the environment of the tool.")
     path_in = sys.argv[2]
     path_out = sys.argv[3]
     df_tcrs = pd.read_csv(path_in, index_col=0)
     species_counts = df_tcrs["organism"].value_counts(dropna=False)
+    if len(species_counts) == 0:
+        raise ValueError("The tools require organism information. However, no data was provided. Pease add organism information to your input.")
     species = species_counts.index[0].lower().replace(" ", "")
     species = "human" if species in ["homosapiens"] else "mouse" if species in ["musmusculus", "murine"] else species
     species = species.upper()
     if species_counts[0] != len(df_tcrs):
-        warning.warn(f"Mixed or undefined TCR organism. The prediction will be conducted on majority {species}. Please make sure this is intended")
+        warnings.warn(f"Mixed or undefined TCR organism. The prediction will be conducted on majority {species}. Please make sure this is intended")
 
     codons = fxn.get_optimal_codons('', species)
 
@@ -72,12 +74,48 @@ def stapler_reconstruction():
         seq = seq[:idx_remove]
         return seq
 
-    tcr_dat, functionality, partial = fxn.get_imgt_data("TRB", st.gene_types, species)
-    df_tcrs["full_seq_reconstruct_beta_aa"] = df_tcrs.apply(lambda x: stitch_tcr(x, "TRB"), axis=1)
+    try:
+        tcr_dat, functionality, partial = fxn.get_imgt_data("TRB", st.gene_types, species)
+        df_tcrs["full_seq_reconstruct_beta_aa"] = df_tcrs.apply(lambda x: stitch_tcr(x, "TRB"), axis=1)
 
-    tcr_dat, functionality, partial = fxn.get_imgt_data("TRA", st.gene_types, species)
-    df_tcrs["full_seq_reconstruct_alpha_aa"] = df_tcrs.apply(lambda x: stitch_tcr(x, "TRA"), axis=1)
+        tcr_dat, functionality, partial = fxn.get_imgt_data("TRA", st.gene_types, species)
+        df_tcrs["full_seq_reconstruct_alpha_aa"] = df_tcrs.apply(lambda x: stitch_tcr(x, "TRA"), axis=1)
+    except:
+        warnings.warn("Please make sure you have downloaded TCRB and TCRA data for Stitchrdl. If not, run the following commands in NetTCR-2.2 environment: pip install IMGTgeneDL && stitchrdl -s human")
     df_tcrs.to_csv(path_out)
+
+def nettcr():
+    fullseq_reconstruction()
+    path_in = sys.argv[3]
+    path_out = sys.argv[4]
+    df_tcrs = pd.read_csv(path_in)
+    df_tcrs["ind"] = df_tcrs.index
+    df_tcrs[["B1", "B2", "B3"]] = pd.DataFrame(df_tcrs.apply(lambda x: get_cdrs_from_fullseq(x, "TRB"), axis=1).tolist())
+    df_tcrs[["A1", "A2", "A3"]] = pd.DataFrame(df_tcrs.apply(lambda x: get_cdrs_from_fullseq(x, "TRA"), axis=1).tolist())
+    df_tcrs = df_tcrs.drop_duplicates()
+    df_tcrs.to_csv(path_out)
+
+def get_cdrs_from_fullseq(row, chain="TRB"):
+    column = "full_seq_reconstruct_beta_aa" if chain == "TRB" else "full_seq_reconstruct_alpha_aa"
+    full_seq = list(zip(row[["ind"]], row[[column]]))
+    try:
+        from anarci import anarci
+    except:
+        raise ImportError("NetTCR-2.2 requires sequences of all cdr regions, which are derived using ANARCI. Please install ANARCI to NetTCR-2.2 environment from https://github.com/oxpig/ANARCI.git.")
+    numbered, al_det, hit = anarci(full_seq, scheme="imgt", output=False)
+    cdr1 = ""
+    cdr2 = ""
+    cdr3 = ""
+    for j in range(26, 38):
+        cdr1 += numbered[0][0][0][j][1]
+    cdr1 = cdr1.replace("-", "")
+    for j in range(55, 65):
+        cdr2 += numbered[0][0][0][j][1]
+    cdr2 = cdr2.replace("-", "")
+    for j in range(104, 117):
+        cdr3 += numbered[0][0][0][j][1]
+    cdr3 = cdr3.replace("-", "")
+    return cdr1, cdr2, cdr3
 
 
 if __name__ == "__main__":
@@ -85,6 +123,7 @@ if __name__ == "__main__":
 
     functions = {
         "tcellmatch": tcellmatch,
-        "stapler": stapler_reconstruction,
+        "stapler": fullseq_reconstruction,
+        "nettcr": nettcr
     }
     functions[flavor]()
