@@ -52,5 +52,4 @@ WORKDIR /epytope
 SHELL ["conda", "run", "-n", "epytope", "/bin/bash", "-c"]
 RUN pip install -e .
 EXPOSE 8001
-#ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "epytope"]
 ENTRYPOINT ["tail", "-f", "/dev/null"]
