@@ -68,3 +68,5 @@ mv msb199416-sup-0005-DatasetEV4 models
 cd /external
 git clone https://github.com/mnielLab/NetTCR-2.2.git
 git clone https://github.com/oxpig/ANARCI.git
+#ImRex
+git clone https://github.com/pmoris/ImRex.git
