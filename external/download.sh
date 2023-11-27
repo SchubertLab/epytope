@@ -30,3 +30,41 @@ cd /external/bertrand
 mkdir models
 gdown https://drive.google.com/uc?id=1FywbDbzhhYbwf99MdZrpYQEbXmwX9Zxm
 unzip /bertrand-checkpoint.zip -d /bertrand/models
+#ATM-TCR
+cd /external
+git clone https://github.com/Lee-CBG/ATM-TCR.git
+#pMTnet - works
+git clone https://github.com/tianshilu/pMTnet.git
+#PanPep
+git clone https://github.com/bm2-lab/PanPep.git
+#iTCep
+git clone https://github.com/kbvstmd/iTCep.git
+#DLpTCR
+git clone https://github.com/JiangBioLab/DLpTCR
+#STAPLER
+git clone https://github.com/NKI-AI/STAPLER.git
+cd /external/STAPLER
+mkdir model
+cd model
+mkdir finetuned_model_refactored
+cd finetuned_model_refactored
+wget https://files.aiforoncology.nl/stapler/model/finetuned_model_refactored/train_checkpoint_epoch-50-loss-0.000-val-ap0.461_refactored.ckpt
+wget https://files.aiforoncology.nl/stapler/model/finetuned_model_refactored/train_checkpoint_epoch-53-loss-0.000-val-ap0.504_refactored.ckpt
+wget https://files.aiforoncology.nl/stapler/model/finetuned_model_refactored/train_checkpoint_epoch-68-loss-0.000-val-ap0.477_refactored.ckpt
+wget https://files.aiforoncology.nl/stapler/model/finetuned_model_refactored/train_checkpoint_epoch-83-loss-0.000-val-ap0.526_refactored.ckpt
+wget https://files.aiforoncology.nl/stapler/model/finetuned_model_refactored/train_checkpoint_epoch-97-loss-0.000-val-ap0.503_refactored.ckpt
+cd ..
+mkdir pretrained_model
+cd pretrained_model
+wget https://files.aiforoncology.nl/stapler/model/pretrained_model/pre-cdr3_combined_epoch%3D437-train_mlm_loss%3D0.702.ckpt
+#tcellmatch
+cd /external
+git clone https://github.com/theislab/tcellmatch.git
+cd tcellmatch
+wget -O models.zip https://figshare.com/ndownloader/files/43082557
+unzip models.zip
+mv msb199416-sup-0005-DatasetEV4 models
+#NetTCR-2.2
+cd /external
+git clone https://github.com/mnielLab/NetTCR-2.2.git
+git clone https://github.com/oxpig/ANARCI.git
