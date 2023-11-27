@@ -4,11 +4,10 @@ RUN apt-get update
 RUN apt-get update && apt-get upgrade -y && apt-get install gcc --yes
 RUN apt-get update && apt-get install -y git
 RUN apt-get update && apt-get install vim -y
+RUN apt-get -y update && apt-get install unzip
 
 WORKDIR /
 RUN git clone -b ac_docker https://github.com/SchubertLab/epytope.git
-RUN apt-get -y update && apt-get install unzip
-RUN conda env create -f /epytope/environment.yml
 SHELL ["/bin/bash", "-c"]
 
 WORKDIR /
@@ -23,6 +22,7 @@ RUN wget -O J_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT
 WORKDIR /TITAN/datasets/imgt
 RUN wget -O V_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Homo_sapiens/TR/TRBV.fasta
 #envs
+RUN conda env create -f /epytope/environment.yml
 RUN conda env create -f /ImRex/environment.yml
 RUN conda env create -f /epytope/ergo.yml
 RUN conda env create -f /epytope/atm.yml
