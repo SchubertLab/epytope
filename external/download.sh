@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 mkdir /external
-cd external
+cd /external
 #TEIM
 git clone https://github.com/pengxingang/TEIM.git
 #epiTCR
