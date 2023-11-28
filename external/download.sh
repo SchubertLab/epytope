@@ -1,4 +1,4 @@
-#!/bin/bash/m
+#!/usr/bin/env bash
 
 mkdir /external
 cd external
