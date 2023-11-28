@@ -13,14 +13,14 @@ SHELL ["/bin/bash", "-c"]
 WORKDIR /
 RUN /bin/sh -c "/epytope/external/download.sh"
 #TITAN
-WORKDIR /
-RUN git clone https://github.com/PaccMann/TITAN.git
-WORKDIR /TITAN/datasets
-RUN mkdir imgt
-WORKDIR /TITAN/datasets/imgt
-RUN wget -O J_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Homo_sapiens/TR/TRBJ.fasta
-WORKDIR /TITAN/datasets/imgt
-RUN wget -O V_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Homo_sapiens/TR/TRBV.fasta
+#WORKDIR /
+#RUN git clone https://github.com/PaccMann/TITAN.git
+#WORKDIR /TITAN/datasets
+#RUN mkdir imgt
+#WORKDIR /TITAN/datasets/imgt
+#RUN wget -O J_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Homo_sapiens/TR/TRBJ.fasta
+#WORKDIR /TITAN/datasets/imgt
+#RUN wget -O V_segment_sequences.fasta https://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Homo_sapiens/TR/TRBV.fasta
 #envs
 RUN conda env create -f /epytope/external/environment.yml
 RUN conda env create -f /ImRex/environment.yml
