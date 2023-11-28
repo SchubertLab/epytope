@@ -41,5 +41,5 @@ stapler:
 tcellmatch:
         conda: epytope_numpy195
 nettcr:
-        repository: ${PATH_EPYTOPE}/../NetTCR-2.2
+        repository: ${PATH_EPYTOPE}/../external/NetTCR-2.2
         conda: epytope_stapler
