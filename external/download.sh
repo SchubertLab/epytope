@@ -77,7 +77,3 @@ conda env create -f /epytope/external/ergo.yml
 conda env create -f /epytope/external/atm.yml
 conda env create -f /epytope/external/tcellmatch.yml
 conda env create -f /epytope/external/titan.yml
-conda create --name epytope_stapler python=3.9
-cd /external/tcellmatch
-conda activate epytope_numpy195
-pip install -e .
