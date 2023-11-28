@@ -81,3 +81,4 @@ conda create --name epytope_stapler python=3.9
 cd /external/tcellmatch
 conda activate epytope_numpy195
 pip install -e .
+conda deactivate
