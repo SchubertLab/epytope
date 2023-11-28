@@ -70,3 +70,13 @@ git clone https://github.com/mnielLab/NetTCR-2.2.git
 git clone https://github.com/oxpig/ANARCI.git
 #ImRex
 git clone https://github.com/pmoris/ImRex.git
+
+conda env create -f /epytope/external/environment.yml
+conda env create -f /external/ImRex/environment.yml
+conda env create -f /epytope/external/ergo.yml
+conda env create -f /epytope/external/atm.yml
+conda env create -f /epytope/external/tcellmatch.yml
+conda env create -f /epytope/external/titan.yml
+conda create --name epytope_stapler python=3.9
+cd /external/tcellmatch
+conda run -n epytope_numpy195 && pip install -e .
