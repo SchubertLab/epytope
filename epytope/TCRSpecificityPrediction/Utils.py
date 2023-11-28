@@ -53,7 +53,7 @@ def fullseq_reconstruction():
     df_tcrs = pd.read_csv(path_in, index_col=0)
     species_counts = df_tcrs["organism"].value_counts(dropna=False)
     if len(species_counts) == 0:
-        raise ValueError("The tools require organism information. However, no data was provided. Pease add organism information to your input.")
+        raise ValueError("The tools require organism information. However, no data was provided. Please add organism information to your input.")
     species = species_counts.index[0].lower().replace(" ", "")
     species = "human" if species in ["homosapiens"] else "mouse" if species in ["musmusculus", "murine"] else species
     species = species.upper()
@@ -81,7 +81,7 @@ def fullseq_reconstruction():
         tcr_dat, functionality, partial = fxn.get_imgt_data("TRA", st.gene_types, species)
         df_tcrs["full_seq_reconstruct_alpha_aa"] = df_tcrs.apply(lambda x: stitch_tcr(x, "TRA"), axis=1)
     except:
-        warnings.warn("Please make sure you have downloaded TCRB and TCRA data for Stitchrdl. If not, run the following commands in NetTCR-2.2 environment: pip install IMGTgeneDL && stitchrdl -s human")
+        warnings.warn("Please make sure you have downloaded TCRB and TCRA data for Stitchrdl. If not, run the following commands in tool environment: pip install IMGTgeneDL && stitchrdl -s human")
     df_tcrs.to_csv(path_out)
 
 def nettcr():
