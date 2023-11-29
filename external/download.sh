@@ -78,6 +78,4 @@ conda env create -f /epytope/external/atm.yml
 conda env create -f /epytope/external/tcellmatch.yml
 conda env create -f /epytope/external/titan.yml
 cd /external/tcellmatch
-conda run -n epytope_numpy195 /bin/bash -c
-pip install -e .
 conda run -n epytope_numpy195 && pip install -e .
