@@ -43,3 +43,6 @@ tcellmatch:
 nettcr:
         repository: ${PATH_EPYTOPE}/../external/NetTCR-2.2
         conda: epytope_torch21
+itcep:
+        repository: ${PATH_EPYTOPE}/../external/iTCep
+        conda: epytope_torch21 
