@@ -20,7 +20,7 @@ mkdir models
 cd models
 pip install gdown && gdown https://drive.google.com/uc?id=12pVozHhRcGyMBgMlhcjgcclE3wlrVO32
 #ERGO
-cd external
+cd /external
 git clone https://github.com/louzounlab/ERGO.git
 #ERGO2
 git clone https://github.com/IdoSpringer/ERGO-II.git
