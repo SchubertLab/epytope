@@ -1306,7 +1306,7 @@ class NetTCR22(ARepoTCRSpecificityPrediction):
     """
     __name = "NetTCR"
     __version = "2.2"
-    __tcr_length = (1, 100000)
+    __tcr_length = (1, 100000) #TODO
     __epitope_length = (1, 12)
     __organism = "H"
     __repo = "https://github.com/mnielLab/NetTCR-2.2.git"
