@@ -57,7 +57,7 @@ dependencies:
     - matplotlib==3.7.3
     - numpy==1.24.4
     - oauthlib==3.2.2
-    - paccmann-predictor==0.0.4
+    - paccmann-predictor @ git+https://github.com/PaccMann/paccmann_predictor@0.0.4
     - packaging==23.2
     - pandas==2.0.3
     - pillow==10.0.1
