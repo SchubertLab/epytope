@@ -70,3 +70,15 @@ git clone https://github.com/mnielLab/NetTCR-2.2.git
 git clone https://github.com/oxpig/ANARCI.git
 #ImRex
 git clone https://github.com/pmoris/ImRex.git
+#TITAN
+cd /external
+git clone https://github.com/PaccMann/TITAN.git
+cd /external/TITAN/datasets
+mkdir imgt
+cd imgt
+wget -O TRBJ.txt 'https://www.imgt.org/genedb/GENElect?query=7.6+TRBJ&species=Homo+sapiens'
+wget -O TRBV.txt 'https://www.imgt.org/genedb/GENElect?query=7.6+TRBV&species=Homo+sapiens'
+python process_data_TITAN.py TRBV.txt V_segment_sequences.fasta
+python process_data_TITAN.py TRBJ.txt J_segment_sequences.fasta
+rm TRBV.txt
+rm TRBJ.txt
