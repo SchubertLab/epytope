@@ -17,6 +17,7 @@ cd /benchmark_TCRprediction
 conda run -n epytope pip install -e .
 cd /external/TITAN
 conda run -n epytope_torch11_1 pip install -e .
+conda run -n epytope_torch11_1 pip install biopython==1.81 pytoda==1.1.3
 cd /external/ANARCI
 conda run -n epytope_torch21 pip install stitchr IMGTgeneDL
 conda run -n epytope_torch21 stitchrdl -s human
