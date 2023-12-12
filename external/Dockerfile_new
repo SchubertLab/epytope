@@ -1,0 +1,26 @@
+FROM continuumio/miniconda3
+
+RUN apt-get update
+RUN apt-get update && apt-get upgrade -y && apt-get install gcc --yes
+RUN apt-get update && apt-get install -y git
+RUN apt-get update && apt-get install vim -y
+RUN apt-get -y update && apt-get install unzip
+RUN apt-get update && apt-get install dos2unix -y
+
+WORKDIR /
+RUN git clone -b ac_docker https://github.com/SchubertLab/epytope.git
+SHELL ["/bin/bash", "-c"]
+
+WORKDIR /
+RUN chmod 777 /epytope/external/download.sh
+RUN chmod 777 /epytope/external/create_envs.sh
+RUN chmod 777 /epytope/external/install.sh
+RUN dos2unix /epytope/external/download.sh
+RUN dos2unix /epytope/external/create_envs.sh
+RUN dos2unix /epytope/external/install.sh
+RUN /bin/sh -c "/epytope/external/download.sh"
+RUN /bin/sh -c "/epytope/external/create_envs.sh"
+RUN /bin/sh -c "/epytope/external/install.sh"
+
+EXPOSE 8001
+ENTRYPOINT ["tail", "-f", "/dev/null"]
