@@ -46,3 +46,6 @@ nettcr:
 itcep:
         repository: ${PATH_EPYTOPE}/../external/iTCep
         conda: epytope_torch21 
+tulip-tcr:
+        repository: ${PATH_EPYTOPE}/../external/TULIP-TCR
+        conda: epytope
