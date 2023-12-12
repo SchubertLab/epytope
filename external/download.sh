@@ -6,9 +6,9 @@ cd /external
 git clone https://github.com/pengxingang/TEIM.git
 #epiTCR
 git clone https://github.com/ddiem-ri-4D/epiTCR.git
-unzip /epiTCR/models/rdforestWithoutMHCModel.pickle.zip -d /external/epiTCR/models
-unzip /epiTCR/models/rdforestWithMHCModel.pickle.zip -d /external/epiTCR/models
-unzip /epiTCR/data/hlaCovertPeudoSeq/HLAWithPseudoSeq.csv.zip -d /external/epiTCR/data/hlaCovertPeudoSeq
+unzip /external/epiTCR/models/rdforestWithoutMHCModel.pickle.zip -d /external/epiTCR/models
+unzip /external/epiTCR/models/rdforestWithMHCModel.pickle.zip -d /external/epiTCR/models
+unzip /external/epiTCR/data/hlaCovertPeudoSeq/HLAWithPseudoSeq.csv.zip -d /external/epiTCR/data/hlaCovertPeudoSeq
 #AttnTAP
 git clone https://github.com/Bioinformatics7181/AttnTAP.git
 #TULIP-TCR
