@@ -505,7 +505,7 @@ class ATCRSpecificityPrediction(object, metaclass=APluginRegister):
         for tcr in tcrs.receptors:
             if not isinstance(tcr, TCellReceptor):
                 raise ValueError(f"{tcr} is not of type TCRReceptor")
-            if tcr.organism.casefold() == "MusMusculus".casefold() or tcr.organism.casefold() == "Mouse".casefold():
+            if tcr.organism is None or tcr.organism.casefold() == "MusMusculus".casefold() or tcr.organism.casefold() == "Mouse".casefold():
                 organisms["MusMusculus"] += 1
         for epitope in epitopes:
             if not isinstance(epitope, TCREpitope):
