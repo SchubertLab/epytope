@@ -29,7 +29,7 @@ git clone https://github.com/SFGLab/bertrand.git
 cd /external/bertrand
 mkdir models
 gdown https://drive.google.com/uc?id=1FywbDbzhhYbwf99MdZrpYQEbXmwX9Zxm
-unzip ./bertrand-checkpoint.zip -d ./bertrand/models
+unzip /external/bertrand/bertrand-checkpoint.zip -d /external/bertrand/models
 #ATM-TCR
 cd /external
 git clone https://github.com/Lee-CBG/ATM-TCR.git
