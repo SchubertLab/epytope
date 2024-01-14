@@ -28,7 +28,7 @@ dependencies:
       - astunparse==1.6.3
       - async-timeout==4.0.3
       - attrs==23.1.0
-      - biopython==1.77
+      - biopython==1.76
       - cachetools==5.3.1
       - certifi==2022.12.7
       - charset-normalizer==2.1.1
