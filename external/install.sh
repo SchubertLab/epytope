@@ -12,7 +12,7 @@ conda run -n epytope_stapler pip install torch==2.1.0 torchaudio==2.1.0 torchvis
 conda run -n epytope_stapler stitchrdl -s human
 conda run -n epytope_stapler pip install x-transformers==0.22.3
 cd /epytope
-conda run -n epytope conda install -c conda-forge ncurses
+conda run -n epytope conda install -c conda-forge ncurses -y
 conda run -n epytope pip install -e .
 cd /benchmark_TCRprediction
 conda run -n epytope pip install -e .
