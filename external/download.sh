@@ -18,7 +18,7 @@ git clone https://github.com/jiangdada1221/TEINet.git
 cd /external/TEINet
 mkdir models
 cd models
-pip install gdown && gdown https://drive.google.com/uc?id=12pVozHhRcGyMBgMlhcjgcclE3wlrVO32
+pip install -U --no-cache-dir gdown --pre && gdown https://drive.google.com/uc?id=12pVozHhRcGyMBgMlhcjgcclE3wlrVO32
 #ERGO
 cd /external
 git clone https://github.com/louzounlab/ERGO.git
