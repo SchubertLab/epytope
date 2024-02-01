@@ -26,6 +26,7 @@ RUN dos2unix /epytope/external/install.sh
 RUN /epytope/external/install.sh
 ENV CODE_PATH=/benchmark_TCRprediction
 ENV RESULT_PATH=/benchmark_TCRprediction
+ENV LD_LIBRARY_PATH=/opt/conda/lib
 
 EXPOSE 8001
 ENTRYPOINT ["tail", "-f", "/dev/null"]
