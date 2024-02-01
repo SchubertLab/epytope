@@ -13,6 +13,7 @@ conda run -n epytope_stapler stitchrdl -s human
 conda run -n epytope_stapler pip install x-transformers==0.22.3
 cd /epytope
 conda run -n epytope conda install -c conda-forge ncurses -y
+conda run -n epytope conda install libgcc==7.2.0
 conda run -n epytope pip install -e .
 cd /benchmark_TCRprediction
 conda run -n epytope pip install -e .
