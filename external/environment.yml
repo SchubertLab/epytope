@@ -66,6 +66,7 @@ dependencies:
   - libedit=3.1.20221030=h5eee18b_0
   - libevent=2.1.12=hdbd6064_1
   - libffi=3.4.4=h6a678d5_0
+  - libgcc=5.2.0=0
   - libgcc-ng=11.2.0=h1234567_1
   - libgfortran-ng=13.1.0=h69a702a_0
   - libgfortran5=13.1.0=h15d22d2_0
@@ -74,7 +75,7 @@ dependencies:
   - libpng=1.6.39=h5eee18b_0
   - libpq=12.15=hdbd6064_1
   - libsodium=1.0.18=h7b6447c_0
-  - libstdcxx-ng=11.2.0=h1234567_1
+  - libstdcxx-ng=13.2.0=h7e041cc_4
   - libtiff=4.5.0=h6a678d5_2
   - libuuid=1.41.5=h5eee18b_0
   - libwebp=1.2.4=h11a3e52_1
