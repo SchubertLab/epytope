@@ -210,7 +210,7 @@ dependencies:
       - rsa==4.9
       - sacremoses==0.0.53
       - scipy==1.4.1
-      - scikit-learn=1.1.0
+      - scikit-learn==1.1.0
       - soupsieve==2.5
       - sympy==1.12
       - tensorboard==2.2.2
