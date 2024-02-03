@@ -100,7 +100,6 @@ dependencies:
   - numexpr=2.8.4=py38hc78ab66_1
   - openssl=3.0.9=h7f8727e_0
   - packaging=22.0=py38h06a4308_0
-  - pandas=1.5.3=py38h417a72b_0
   - parso=0.8.3=pyhd3eb1b0_0
   - pcre=8.45=h295c915_0
   - pexpect=4.8.0=pyhd3eb1b0_3
@@ -132,7 +131,6 @@ dependencies:
   - qtwebkit=5.212=h4eab89a_4
   - readline=8.2=h5eee18b_0
   - requests=2.31.0=pyhd8ed1ab_0
-  - scikit-learn=1.2.2=py38h6a678d5_1
   - seaborn=0.12.2=py38h06a4308_0
   - setuptools=68.0.0=py38h06a4308_0
   - sip=6.6.2=py38h6a678d5_0
@@ -201,6 +199,7 @@ dependencies:
       - oauthlib==3.2.2
       - openpyxl==3.1.2
       - opt-einsum==3.3.0
+      - pandas==1.4.0
       - protobuf==3.20.1
       - pyasn1==0.5.0
       - pyasn1-modules==0.3.0
@@ -212,6 +211,7 @@ dependencies:
       - rsa==4.9
       - sacremoses==0.0.53
       - scipy==1.4.1
+      - scikit-learn=1.1.0
       - soupsieve==2.5
       - sympy==1.12
       - tensorboard==2.2.2
