@@ -35,7 +35,6 @@ dependencies:
   - fontconfig=2.14.1=h52c9d5c_1
   - fonttools=4.25.0=pyhd3eb1b0_0
   - freetype=2.12.1=h4a9f257_0
-  - gensim=4.3.0=py38h6a678d5_0
   - giflib=5.2.1=h5eee18b_3
   - glib=2.69.1=he621ea3_2
   - gst-plugins-base=1.14.1=h6a678d5_1
