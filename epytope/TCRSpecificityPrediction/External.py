@@ -1191,6 +1191,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
                                                               "peptide": "Epitope"})
         required_columns = joining_list + ["Score"]
         results_predictor = results_predictor[required_columns]
+        results_predictor = results_predictor.drop_duplicates(subset=joining_list)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
     
