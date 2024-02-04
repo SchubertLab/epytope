@@ -1165,6 +1165,9 @@ class TULIP(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs[(~df_tcrs["MHC"].isna()) & (df_tcrs["MHC"] != "")]
         df_tcrs = df_tcrs.drop_duplicates()
         df_tcrs["binder"] = 1
+        if df_tcrs.shape[0] == 1:
+           df_tcrs = pd.concat([df_tcrs] * 2).sort_index().reset_index(drop=True)
+        df_tcrs.iat[0, df_tcrs.columns.get_loc("binder")] = 0
         return df_tcrs
     
 
