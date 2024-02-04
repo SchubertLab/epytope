@@ -1169,8 +1169,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
     
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = "" if "model" not in kwargs else kwargs["model"]
-        model = f"{self.repository_path}/{model}"
+        model = f"{self.repository_path}" if "model" not in kwargs else f"{self.repository_path}/{kwargs['model']}"
         config = f"{self.repository_path}/configs/shallow.config.json"
         return f"predict.py --test_dir {filenames[0]} --modelconfig {config} --load {model} --output {tmp_folder.name}/ >> {filenames[1]}"
 
