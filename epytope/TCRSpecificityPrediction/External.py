@@ -1210,11 +1210,6 @@ class TULIP(ARepoTCRSpecificityPrediction):
             idx = script.index('        results["rank"] = ranks\n')
             script[idx] = '        results["Score"] = scores\n        results["MHC"] = datasetPetideSpecific.MHC\n'
             changed = 1
-        #correct path
-        if '        results.to_csv(args.save + target_peptide+".csv")\n' in script:
-            idx = script.index('        results.to_csv(args.save + target_peptide+".csv")\n')
-            script[idx] = '        results.to_csv(args.output + target_peptide+".csv")\n'
-            changed = 1
         #allow cpu
         if processor == "cpu" and '        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n' in script:
             idx = script.index('        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n')
