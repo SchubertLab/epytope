@@ -1206,10 +1206,6 @@ class TULIP(ARepoTCRSpecificityPrediction):
         changed = 0
         with open(os.path.join(path_repo, "predict.py"), "r") as f:
             script.extend(f.readlines())
-        # delete line with not defined argument
-        if "    train_path = args.train_dir\n" in script:
-            script.remove("    train_path = args.train_dir\n")
-            changed = 1
         # change output
         if '        results["rank"] = ranks\n' in script:
             idx = script.index('        results["rank"] = ranks\n')
