@@ -1186,7 +1186,8 @@ class TULIP(ARepoTCRSpecificityPrediction):
         joining_list = ["VJ_cdr3", "VDJ_cdr3", "Epitope", "MHC"]
         results_predictor = results_predictor.rename(columns={"CDR3b": "VDJ_cdr3",
                                                               "CDR3a": "VJ_cdr3",
-                                                              "peptide": "Epitope"})
+                                                              "peptide": "Epitope",
+                                                              "score": "Score"})
         required_columns = joining_list + ["Score"]
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates(subset=joining_list)
