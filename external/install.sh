@@ -24,7 +24,7 @@ cd /external/ANARCI
 conda run -n epytope_torch21 pip install stitchr IMGTgeneDL
 conda run -n epytope_torch21 stitchrdl -s human
 conda run -n epytope_torch21 conda install -c conda-forge openmm pdbfixer -y
-conda run -n epytope_torch21 conda install -c bioconda hmmer=3.3.2 biopython -y
+conda run -n epytope_torch21 conda install -c bioconda hmmer=3.3.2 -y
 conda run -n epytope_torch21 pip install muscle
 conda run -n epytope_torch21 python setup.py install
 conda run -n epytope_torch21 pip install numpy==1.24.1
