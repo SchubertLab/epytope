@@ -1178,6 +1178,8 @@ class TULIP(ARepoTCRSpecificityPrediction):
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):  
         csv_files = list(filter(lambda f: f.endswith(".csv"), os.listdir(tmp_folder.name)))
+        csv_files.remove(f"{self.name}_input.csv")
+        csv_files.remove(f"{self.name}_output.csv")
         result_list = []
         for file in csv_files:
             result_list.append(pd.read_csv(os.path.join(tmp_folder.name, file)))
