@@ -1178,8 +1178,6 @@ class TULIP(ARepoTCRSpecificityPrediction):
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):  
         csv_files = list(filter(lambda f: f.endswith(".csv"), os.listdir(tmp_folder.name)))
-        csv_files.remove(f"{self.name}_input.csv")
-        csv_files.remove(f"{self.name}_output.csv")
         result_list = []
         for file in csv_files:
             result_list.append(pd.read_csv(os.path.join(tmp_folder.name, file)))
@@ -1212,12 +1210,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
         # change output
         if '        results["rank"] = ranks\n' in script:
             idx = script.index('        results["rank"] = ranks\n')
-            script[idx] = '        results["Score"] = scores\n        results["MHC"] = datasetPetideSpecific.MHC\n'
-            changed = 1
-        #allow cpu
-        if processor == "cpu" and '        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n' in script:
-            idx = script.index('        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n')
-            script[idx] = '        checkpoint = torch.load(args.load+"/pytorch_model.bin", map_location=torch.device("cpu"))\n'
+            script[idx] = '        results["MHC"] = datasetPetideSpecific.MHC\n'
             changed = 1
         if changed == 1:
             with open(os.path.join(path_repo, "predict.py"), "w") as f:
