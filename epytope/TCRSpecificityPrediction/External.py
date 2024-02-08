@@ -1160,14 +1160,14 @@ class TULIP(ARepoTCRSpecificityPrediction):
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide"})
         df_tcrs = df_tcrs[required_columns]
-        df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
-        df_tcrs = df_tcrs[(~df_tcrs["CDR3a"].isna()) & (df_tcrs["CDR3a"] != "")]
-        df_tcrs = df_tcrs[(~df_tcrs["MHC"].isna()) & (df_tcrs["MHC"] != "")]
-        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["MHC"] = df_tcrs["MHC"].fillna("<MIS>")
+        df_tcrs["MHC"] = df_tcrs["MHC"].replace("", "<MIS>")
+        df_tcrs["CDR3a"] = df_tcrs["CDR3a"].fillna("<MIS>")
+        df_tcrs["CDR3a"] = df_tcrs["CDR3a"].replace("", "<MIS>")
+        df_tcrs["CDR3b"] = df_tcrs["CDR3b"].fillna("<MIS>")
+        df_tcrs["CDR3b"] = df_tcrs["CDR3b"].replace("", "<MIS>")
+        df_tcrs = df_tcrs.drop_duplicates().reset_index()
         df_tcrs["binder"] = 1
-        if df_tcrs.shape[0] == 1:
-           df_tcrs = pd.concat([df_tcrs] * 2).sort_index().reset_index(drop=True)
-        df_tcrs.iat[0, df_tcrs.columns.get_loc("binder")] = 0
         return df_tcrs
     
 
@@ -1190,6 +1190,9 @@ class TULIP(ARepoTCRSpecificityPrediction):
                                                               "CDR3a": "VJ_cdr3",
                                                               "peptide": "Epitope",
                                                               "score": "Score"})
+        results_predictor["MHC"] = results_predictor["MHC"].replace("<MIS>", None)
+        results_predictor["VJ_cdr3"] = results_predictor["VJ_cdr3"].replace("<MIS>", "")
+        results_predictor["VDJ_cdr3"] = results_predictor["VDJ_cdr3"].replace("<MIS>", "")
         required_columns = joining_list + ["Score"]
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates(subset=joining_list)
@@ -1197,14 +1200,13 @@ class TULIP(ARepoTCRSpecificityPrediction):
         return df_out
     
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
-        processor = "cpu" if "processor" not in kwargs else kwargs["processor"]
         if repository is not None and repository != "" and os.path.isdir(repository):
-            self.correct_code(repository, processor)
+            self.correct_code(repository)
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
     
-    def correct_code(self, path_repo, processor):
+    def correct_code(self, path_repo):
         """
-        The github repo contains several bugs, which will be corrected here.
+        The github repo does not provide full functionality, it will be corrected here.
         """
         script = []
         changed = 0
@@ -1214,6 +1216,13 @@ class TULIP(ARepoTCRSpecificityPrediction):
         if '        results["rank"] = ranks\n' in script:
             idx = script.index('        results["rank"] = ranks\n')
             script[idx] = '        results["MHC"] = datasetPetideSpecific.MHC\n'
+            changed = 1
+        #remove auc calculation
+        if "        auce = roc_auc_score(datasetPetideSpecific.binder, ranks)\n" in script:
+            script.remove("        auce = roc_auc_score(datasetPetideSpecific.binder, ranks)\n")
+            changed = 1
+        if "        print(auce)\n" in script:
+            script.remove("        print(auce)\n")
             changed = 1
         if changed == 1:
             with open(os.path.join(path_repo, "predict.py"), "w") as f:
