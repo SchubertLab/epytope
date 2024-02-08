@@ -1,11 +1,24 @@
-FROM continuumio/miniconda3
+FROM ubuntu:22.04
 
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 RUN apt-get update
 RUN apt-get update && apt-get upgrade -y && apt-get install gcc --yes
 RUN apt-get update && apt-get install -y git
 RUN apt-get update && apt-get install vim -y
 RUN apt-get -y update && apt-get install unzip
-RUN apt-get update && apt-get install gcc-4.9 && apt-get upgrade libstdc++6 && apt-get dist-upgrade
+
+RUN apt-get update && \
+    apt-get install -y wget bzip2 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -p /opt/miniconda && \
+    rm /tmp/miniconda.sh
+
+ENV PATH=/opt/miniconda/bin:$PATH
+
+RUN echo "source /opt/miniconda/etc/profile.d/conda.sh && conda activate base" >> /root/.bashrc
 
 WORKDIR /
 RUN git clone -b ac_docker https://github.com/SchubertLab/epytope.git
