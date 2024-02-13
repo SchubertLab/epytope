@@ -1160,17 +1160,19 @@ class TULIP(ARepoTCRSpecificityPrediction):
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide"})
         df_tcrs = df_tcrs[required_columns]
-        df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
-        df_tcrs = df_tcrs[(~df_tcrs["CDR3a"].isna()) & (df_tcrs["CDR3a"] != "")]
-        df_tcrs = df_tcrs[(~df_tcrs["MHC"].isna()) & (df_tcrs["MHC"] != "")]
-        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["MHC"] = df_tcrs["MHC"].fillna("<MIS>")
+        df_tcrs["MHC"] = df_tcrs["MHC"].replace("", "<MIS>")
+        df_tcrs["CDR3a"] = df_tcrs["CDR3a"].fillna("<MIS>")
+        df_tcrs["CDR3a"] = df_tcrs["CDR3a"].replace("", "<MIS>")
+        df_tcrs["CDR3b"] = df_tcrs["CDR3b"].fillna("<MIS>")
+        df_tcrs["CDR3b"] = df_tcrs["CDR3b"].replace("", "<MIS>")
+        df_tcrs = df_tcrs.drop_duplicates().reset_index()
         df_tcrs["binder"] = 1
         return df_tcrs
     
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = "pretrained/multiTCR_s_mhcX_2_below20out" if "model" not in kwargs else kwargs["model"]
-        model = f"{self.repository_path}/model_weights/{model}"
+        model = f"{self.repository_path}/model_weights/pytorch_model.bin" if "model" not in kwargs else {kwargs["model"]}
         config = f"{self.repository_path}/configs/shallow.config.json"
         return f"predict.py --test_dir {filenames[0]} --modelconfig {config} --load {model} --output {tmp_folder.name}/ >> {filenames[1]}"
 
@@ -1186,44 +1188,40 @@ class TULIP(ARepoTCRSpecificityPrediction):
         joining_list = ["VJ_cdr3", "VDJ_cdr3", "Epitope", "MHC"]
         results_predictor = results_predictor.rename(columns={"CDR3b": "VDJ_cdr3",
                                                               "CDR3a": "VJ_cdr3",
-                                                              "peptide": "Epitope"})
+                                                              "peptide": "Epitope",
+                                                              "score": "Score"})
+        results_predictor["MHC"] = results_predictor["MHC"].replace("<MIS>", None)
+        results_predictor["VJ_cdr3"] = results_predictor["VJ_cdr3"].replace("<MIS>", "")
+        results_predictor["VDJ_cdr3"] = results_predictor["VDJ_cdr3"].replace("<MIS>", "")
         required_columns = joining_list + ["Score"]
         results_predictor = results_predictor[required_columns]
+        results_predictor = results_predictor.drop_duplicates(subset=joining_list)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
-        return df_out
     
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
-        processor = "cpu" if "processor" not in kwargs else kwargs["processor"]
         if repository is not None and repository != "" and os.path.isdir(repository):
-            self.correct_code(repository, processor)
+            self.correct_code(repository)
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
     
-    def correct_code(self, path_repo, processor):
+   def correct_code(self, path_repo):
         """
-        The github repo contains several bugs, which will be corrected here.
+        The github repo does not provide full functionality, it will be corrected here.
         """
         script = []
         changed = 0
         with open(os.path.join(path_repo, "predict.py"), "r") as f:
             script.extend(f.readlines())
-        # delete line with not defined argument
-        if "    train_path = args.train_dir\n" in script:
-            script.remove("    train_path = args.train_dir\n")
-            changed = 1
         # change output
         if '        results["rank"] = ranks\n' in script:
             idx = script.index('        results["rank"] = ranks\n')
-            script[idx] = '        results["Score"] = scores\n        results["MHC"] = datasetPetideSpecific.MHC\n'
+            script[idx] = '        results["MHC"] = datasetPetideSpecific.MHC\n'
             changed = 1
-        #correct path
-        if '        results.to_csv(args.save + target_peptide+".csv")\n' in script:
-            idx = script.index('        results.to_csv(args.save + target_peptide+".csv")\n')
-            script[idx] = '        results.to_csv(args.output + target_peptide+".csv")\n'
+        #remove auc calculation
+        if "        auce = roc_auc_score(datasetPetideSpecific.binder, ranks)\n" in script:
+            script.remove("        auce = roc_auc_score(datasetPetideSpecific.binder, ranks)\n")
             changed = 1
-        #allow cpu
-        if processor == "cpu" and '        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n' in script:
-            idx = script.index('        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n')
-            script[idx] = '        checkpoint = torch.load(args.load+"/pytorch_model.bin", map_location=torch.device("cpu"))\n'
+        if "        print(auce)\n" in script:
+            script.remove("        print(auce)\n")
             changed = 1
         if changed == 1:
             with open(os.path.join(path_repo, "predict.py"), "w") as f:
