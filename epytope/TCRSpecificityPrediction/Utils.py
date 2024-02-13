@@ -44,7 +44,7 @@ def tcellmatch():
     np.save(path_out, ffn.predictions)
 
 
-def fullseq_reconstruction()
+def fullseq_reconstruction():
     try:
         from Stitchr import stitchrfunctions as fxn
         from Stitchr import stitchr as st
