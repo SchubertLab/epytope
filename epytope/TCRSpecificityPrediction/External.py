@@ -150,6 +150,7 @@ class Ergo2(ARepoTCRSpecificityPrediction):
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1], index_col=0)
+        results_predictor["MHC"] = results_predictor["MHC"].fillna(None)
         results_predictor = results_predictor.fillna("")
         results_predictor = results_predictor.rename(columns={k: v for v, k in self._rename_columns.items()})
         results_predictor = results_predictor.rename(columns={"Peptide": "Epitope"})
