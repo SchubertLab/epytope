@@ -1,5 +1,6 @@
 FROM ubuntu:22.04
 
+
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 RUN apt-get update
 RUN apt-get update && apt-get upgrade -y && apt-get install gcc --yes
@@ -27,7 +28,7 @@ SHELL ["/bin/bash", "-c"]
 COPY benchmark_TCRprediction /benchmark_TCRprediction
 
 WORKDIR /epytope/external
-RUN apt-get install -y dos2unix
+RUN apt-get update && apt-get install -y dos2unix
 RUN chmod 777 /epytope/external/download.sh
 RUN dos2unix /epytope/external/download.sh
 RUN /epytope/external/download.sh
@@ -39,7 +40,6 @@ RUN dos2unix /epytope/external/install.sh
 RUN /epytope/external/install.sh
 ENV CODE_PATH=/benchmark_TCRprediction
 ENV RESULT_PATH=/benchmark_TCRprediction
-ENV LD_LIBRARY_PATH=/opt/conda/lib
 
 EXPOSE 8001
 ENTRYPOINT ["tail", "-f", "/dev/null"]
