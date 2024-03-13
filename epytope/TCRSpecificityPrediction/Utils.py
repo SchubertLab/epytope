@@ -42,7 +42,7 @@ def tcellmatch():
     np.save(path_out, ffn.predictions)
 
 
-def fullseq_reconstruction():
+def fullseq_reconstruction(do_cut=True):
     try:
         from Stitchr import stitchrfunctions as fxn
         from Stitchr import stitchr as st
@@ -70,8 +70,9 @@ def fullseq_reconstruction():
                 "5_prime_seq": "", "3_prime_seq": "", "name": "TCR"}
         stitched = st.stitch(tcr_bits, tcr_dat, functionality, partial, codons, 3, "")
         seq = fxn.translate_nt("N" * stitched[2] + stitched[1])
-        idx_remove = 177 if chain == "TRB" else 141
-        seq = seq[:idx_remove]
+        if do_cut:
+            idx_remove = 177 if chain == "TRB" else 141
+            seq = seq[:idx_remove]
         return seq
 
     try:
@@ -85,7 +86,7 @@ def fullseq_reconstruction():
     df_tcrs.to_csv(path_out)
 
 def nettcr():
-    fullseq_reconstruction()
+    fullseq_reconstruction(do_cut=False)
     path_in = sys.argv[3]
     path_out = sys.argv[4]
     df_tcrs = pd.read_csv(path_in)

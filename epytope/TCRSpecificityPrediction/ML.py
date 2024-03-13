@@ -153,7 +153,7 @@ class ACmdTCRSpecificityPrediction(ATCRSpecificityPrediction):
             for epitope in epitopes:
                 df_tmp = result_df[result_df["Epitope"] == epitope.peptide].copy()
                 if "MHC" in joining_list:
-                    df_tmp = df_tmp[df_tmp["MHC"].astype(str) == (epitope.allele if epitope.allele else "")].copy()
+                    df_tmp = df_tmp[df_tmp["MHC"].apply(lambda v: str(v) if v else None).isin([epitope.allele if epitope.allele else None])].copy()
                 tuples.extend([(str(epitope), self.name.lower())])
                 df_out = df_out.merge(df_tmp, on=[el for el in joining_list if el not in ["Epitope", "MHC"]],
                                       how="left")
