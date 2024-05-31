@@ -82,7 +82,7 @@ def fullseq_reconstruction(do_cut=True):
         tcr_dat, functionality, partial = fxn.get_imgt_data("TRA", st.gene_types, species)
         df_tcrs["full_seq_reconstruct_alpha_aa"] = df_tcrs.apply(lambda x: stitch_tcr(x, "TRA"), axis=1)
     except:
-        warnings.warn("Please make sure you have downloaded TCRB and TCRA data for Stitchrdl. If not, run the following commands in tool environment: pip install IMGTgeneDL && stitchrdl -s human")
+        warnings.warn("An error occurred during the full TCR sequence reconstruction with Stitchr. This issue can arise for several reasons. Please ensure that your data is correctly formatted. Please verify that you have downloaded the TCRB and TCRA data required for Stitchrdl. If not, run the following commands in the tool environment: pip install IMGTgeneDL && stitchrdl -s human .")
     df_tcrs.to_csv(path_out)
 
 def nettcr():
