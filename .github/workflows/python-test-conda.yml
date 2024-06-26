@@ -1,0 +1,36 @@
+name: Unit tests without external tools
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  tests:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest]
+        python-version: [3.7]
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set conda package directory
+      run: |
+        mkdir /tmp/condapkgs
+        echo "CONDA_PKGS_DIRS=/tmp/condapkgs" >> $GITHUB_ENV
+    - name: Set up Python ${{ matrix.python-version }}
+      run: |
+        $CONDA/bin/conda create -p /tmp/condaenv python==${{ matrix.python-version }}'.*' setuptools"==52.0" protobuf"<=3.20.1"
+    - name: Activate conda environment
+      run: |
+        echo "/tmp/condaenv/bin" >> $GITHUB_PATH
+        export PATH="/tmp/condaenv/bin:$PATH"
+    - name: Install epytope
+      run: |
+        pip install .
+    - name: Install Test dependencies
+      run: conda install -p /tmp/condaenv -c conda-forge -c bioconda nose nose-exclude glpk
+    - name: Run Tests
+      run: nosetests --exclude-dir=epytope/test/external epytope

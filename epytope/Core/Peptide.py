@@ -85,6 +85,32 @@ class Peptide(MetadataLogger, Seq):
             lines.append("in PROTEIN: %s" % p_id)
         return '\n'.join(lines)
 
+<<<<<<< HEAD
+=======
+    """
+    Determines whether the :class:`~epytope.Core.Peptide.Peptide` is generated from a variant in the corresponding :class:`~epytope.Core.Protein.Protein`.
+
+    :return: True if peptide originates from a variant
+    :rtype: boolean
+    """
+    def is_created_by_variant(self):
+        transcript_ids = [x.transcript_id for x in set(self.get_all_transcripts())]
+        for t in transcript_ids:
+            p = self.proteins[t]
+            variant_map = p.vars
+            for pos, vars in variant_map.items():
+                for var in vars:
+                    if var.type in [VariationType.FSDEL, VariationType.FSINS]:
+                        if self.proteinPos[t][0] + len(self) > pos:
+                            return True
+                    else:
+                        for start_pos in self.proteinPos[t]:
+                            positions = list(range(start_pos, start_pos + len(self)))
+                            if pos in positions:
+                                return True
+        return False
+
+>>>>>>> repo-b2/main
     def get_all_proteins(self):
         """
         Returns all :class:`~epytope.Core.Protein.Protein` objects associated with the

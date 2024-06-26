@@ -34,7 +34,7 @@ class GeneratorTest(TestCase):
                                         "NM_001114377", 653, 217, "", "")
                                     }, False, True)
 
-        self.db_adapter = MartsAdapter(biomart="http://grch37.ensembl.org/biomart/martservice?query=")
+        self.db_adapter = MartsAdapter(biomart="http://grch37.ensembl.org")
 
     def test__incorp_snp(self):
         ts = list("TESTSEQUENCE")
@@ -265,7 +265,7 @@ class GeneratorTest(TestCase):
     #     self.assertTrue(len(peps - peps_from_prot) == 0)
     #     self.assertTrue(len(peps_from_prot - peps) == 0)
 
-    def test_peptides_from_varaints(self):
+    def test_peptides_from_variants(self):
         coding = {}
         coding['NM_080751'] = MutationSyntax('NM_080751',2629,876,'c.2630C>T','p.Pro877Leu')
         var = Variant('line0',0,20,2621905,'C','T',coding,True,False)
