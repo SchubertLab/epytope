@@ -21,7 +21,7 @@ setup(
     name='epytope',
 
     # Version:
-    version='3.1.0',
+    version='3.4.0',
 
     description='A Framework for Epitope Detection and Vaccine Design',
     long_description=long_description,
@@ -32,11 +32,11 @@ setup(
 
     # Author details
     author='Benjamin Schubert, Mathias Walzer, Christopher Mohr, Leon Kuchenbecker',
-    author_email='benjamin.schubert@helmholtz-muenchen.de, walzer@ebi.ac.uk, christopher.mohr@uni-tuebingen.de, leon.kuchenbecker@uni-tuebingen.de ',
+    author_email='benjamin.schubert@helmholtz-muenchen.de, walzer@ebi.ac.uk, contact.cmohr@gmail.com, leon.kuchenbecker@uni-tuebingen.de ',
 
     # maintainer details
-    maintainer='Christopher Mohr',
-    maintainer_email='christopher.mohr@uni-tuebingen.de',
+    maintainer='Christopher Mohr, Jonas Scheid',
+    maintainer_email='contact.cmohr@gmail.com, jonas.scheid@uni-tuebingen.de',
 
     # Choose your license
     license='BSD',
@@ -101,16 +101,18 @@ setup(
     # Run-time dependencies. (will be installed by pip when epytope is installed)
     # TODO: find alternative for SMVlight scikitlearn
     install_requires=[
-            'setuptools<=57',
-            'pandas',
+            'setuptools',
+            'pandas>=1.3.5',        # See issue #84
             'pyomo>=4.0',
             'PyMySQL',
             'biopython',
-            'pyVCF',
+            'PyVCF3',
             'mhcflurry<=1.4.3',
-            'mhcnuggets',
+            'mhcnuggets==2.3.2',
             'keras<=2.3.1',         # legacy tensorflow required by mhcnuggets resolves to incompatible keras version
             'h5py<=2.10.0',         # mhcnuggets fails to read model with newer versions
+            'requests',
+            'beautifulsoup4',
             ],
 
 )

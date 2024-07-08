@@ -1,0 +1,68 @@
+name: Unit tests external tools
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  tests-external:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+        python-version: [3.7]
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        path: epytope
+    - uses: actions/checkout@v4
+      with:
+        repository: kohlbacherlab/fred-tools
+        token: ${{ secrets.FRED_CI_PAT }}
+        path: epytope-tools
+    - name: Install epytope-tools system dependencies
+      run:
+        apt-fast install -y tcsh
+    - name: epytope-tools post scripts
+      working-directory: ./epytope-tools/
+      run: |
+        ./post.runner
+    - name: Set conda package directory
+      run: |
+        mkdir /tmp/condapkgs
+        echo "CONDA_PKGS_DIRS=/tmp/condapkgs" >> $GITHUB_ENV
+    - name: Activate epytope-tools
+      run: |
+        echo "$PWD/epytope-tools/bin" >> $GITHUB_PATH
+        echo "PATH=$PATH"
+    - name: Set up Python ${{ matrix.python-version }}
+      run: |
+        $CONDA/bin/conda create -p /tmp/condaenv python==${{ matrix.python-version }}'.*' setuptools"==52.0" protobuf"<=3.20.1"
+    - name: Activate conda environment
+      run: |
+        echo "/tmp/condaenv/bin" >> $GITHUB_PATH
+        export PATH="/tmp/condaenv/bin:$PATH"
+    - name: Install epytope
+      run: |
+        pip install ./epytope/
+    - name: Set up test environment
+      run: |
+        conda install -p /tmp/condaenv -c conda-forge -c bioconda nose
+    - name: Run Tests - Cleavage Prediction
+      working-directory: ./epytope/
+      continue-on-error: true
+      run: nosetests -v epytope/test/external/TestExternalCleavagePrediction.py || echo "Cleavage Prediction" >> FAILED_TESTS
+    - name: Run Tests - Epitope Prediction
+      working-directory: ./epytope/
+      run: nosetests -v epytope/test/external/TestExternalEpitopePrediction.py || echo "Epitope Prediction" >> FAILED_TESTS
+    - name: Validate Test Results
+      working-directory: ./epytope/
+      run: |
+        if [ -e FAILED_TESTS ]; then
+          echo "FAILED TESTS:" >&2
+          cat FAILED_TESTS
+          exit 1
+        fi

@@ -47,7 +47,11 @@ class SignatureCheckerMeta(type):
             for baseClass in baseClasses:
                 try:
                     fBase = getattr(baseClass, methodName).__func__
+<<<<<<< HEAD
                     if not inspect.getargspec(f) == inspect.getargspec(fBase):
+=======
+                    if not inspect.getfullargspec(f) == inspect.getfullargspec(fBase):
+>>>>>>> repo-b2/main
                         raise BadSignatureException(str(methodName))
                 except AttributeError:
                     # This method was not defined in this base class,
@@ -87,6 +91,7 @@ try:
             Rohit Bhattacharya, Ashok Sivakumar, Collin Tokheim, Violeta Beleva Guthrie, Valsamo Anagnostou,
             Victor E. Velculescu, Rachel Karchin (2017) bioRxiv
         """
+<<<<<<< HEAD
         __alleles = frozenset(
             ["HLA-A*01:01", "HLA-A*02:01", "HLA-A*02:02", "HLA-A*02:03", "HLA-A*02:04", "HLA-A*02:05", "HLA-A*02:06",
              "HLA-A*02:07", "HLA-A*02:08", "HLA-A*02:09", "HLA-A*02:10", "HLA-A*02:11", "HLA-A*02:12", "HLA-A*02:14",
@@ -112,6 +117,16 @@ try:
         __version = "2.0"
 
         # the interface defines three class properties
+=======
+        __name = "mhcnuggets-class-1"
+        __version = "2.0"
+        __supported_length = frozenset([5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+        __allele_import_name = f"{__name}_{__version}".replace('-', '_').replace('.', '_')
+        __alleles = getattr(__import__("epytope.Data.supportedAlleles.ann." + __allele_import_name,
+                                       fromlist=[__allele_import_name])
+                            , __allele_import_name)
+
+>>>>>>> repo-b2/main
         @property
         def name(self):
             # returns the name of the predictor
@@ -267,6 +282,7 @@ try:
             Rohit Bhattacharya, Ashok Sivakumar, Collin Tokheim, Violeta Beleva Guthrie, Valsamo Anagnostou,
             Victor E. Velculescu, Rachel Karchin (2017) bioRxiv
         """
+<<<<<<< HEAD
         __alleles = frozenset(["HLA-A*01:01", "HLA-A*02:01", "HLA-A*02:02", "HLA-A*02:03", "HLA-A*02:05", "HLA-A*02:06", "HLA-A*02:07",
                                "HLA-A*02:11", "HLA-A*02:12", "HLA-A*02:16", "HLA-A*02:17", "HLA-A*02:19", "HLA-A*02:50", "HLA-A*03:01",
                                "HLA-A*03:19", "HLA-A*11:01", "HLA-A*23:01", "HLA-A*24:01", "HLA-A*24:02", "HLA-A*24:03", "HLA-A*25:01",
@@ -291,21 +307,42 @@ try:
         @property
         def name(self):
             # returns the name of the predictor
+=======
+        __name = "mhcnuggets-class-1"
+        __version = "2.3.2"
+        __supported_length = frozenset([5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+        __allele_import_name = f"{__name}_{__version}".replace('-', '_').replace('.', '_')
+        __alleles = getattr(__import__("epytope.Data.supportedAlleles.ann." + __allele_import_name,
+                                       fromlist=[__allele_import_name])
+                            , __allele_import_name)
+
+        @property
+        def name(self):
+>>>>>>> repo-b2/main
             return self.__name
 
         @property
         def supportedAlleles(self):
+<<<<<<< HEAD
             # returns the supported alleles as strings (without the HLA prefix)
+=======
+>>>>>>> repo-b2/main
             return self.__alleles
 
         @property
         def supportedLength(self):
+<<<<<<< HEAD
             # returns the supported epitope lengths as iterable
+=======
+>>>>>>> repo-b2/main
             return self.__supported_length
 
         @property
         def version(self):
+<<<<<<< HEAD
             # returns the version of the predictor
+=======
+>>>>>>> repo-b2/main
             return self.__version
 
         def _represent(self, allele):
@@ -321,6 +358,22 @@ try:
             else:
                 return "%s-%s%s:%s" % (allele.organism, allele.locus, allele.supertype, allele.subtype)
 
+<<<<<<< HEAD
+=======
+        def convert_alleles(self, alleles):
+            """
+            Converts :class:`~epytope.Core.Allele.Allele` into the internal :class:`~epytope.Core.Allele.Allele` representation
+            of the predictor and returns a string representation
+
+            :param alleles: The :class:`~epytope.Core.Allele.Allele` for which the internal predictor representation is
+                            needed
+            :type alleles: :class:`~epytope.Core.Allele.Allele`
+            :return: Returns a string representation of the input :class:`~epytope.Core.Allele.Allele`
+            :rtype: list(str)
+            """
+            return [self._represent(a) for a in alleles]
+
+>>>>>>> repo-b2/main
         # Converts the internal mhcnuggets-class-1 HLA representation back into a epytope representation
         def revert_allele_repr(self, name):
             if name.startswith("H-2-"):
@@ -344,6 +397,7 @@ try:
             Rohit Bhattacharya, Ashok Sivakumar, Collin Tokheim, Violeta Beleva Guthrie, Valsamo Anagnostou,
             Victor E. Velculescu, Rachel Karchin (2017) bioRxiv
         """
+<<<<<<< HEAD
         __alleles = frozenset(["HLA-DPA1*01:03-DPB1*02:01", "HLA-DPA1*01:03-DPB1*03:01", "HLA-DPA1*01:03-DPB1*04:01",
                                "HLA-DPA1*01:03-DPB1*04:02", "HLA-DPA1*02:01-DPB1*01:01", "HLA-DPA1*02:01-DPB1*05:01",
                                "HLA-DPA1*02:02-DPB1*05:01", "HLA-DPA1*03:01-DPB1*04:02", "HLA-DPB1*01:01",
@@ -389,21 +443,42 @@ try:
         @property
         def name(self):
             # returns the name of the predictor
+=======
+        __name = "mhcnuggets-class-2"
+        __version = "2.0"
+        __supported_length = frozenset([5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25])
+        __allele_import_name = f"{__name}_{__version}".replace('-', '_').replace('.', '_')
+        __alleles = getattr(__import__("epytope.Data.supportedAlleles.ann." + __allele_import_name,
+                                       fromlist=[__allele_import_name])
+                            , __allele_import_name)
+
+        @property
+        def name(self):
+>>>>>>> repo-b2/main
             return self.__name
 
         @property
         def supportedAlleles(self):
+<<<<<<< HEAD
             # returns the supported alleles as strings (without the HLA prefix)
+=======
+>>>>>>> repo-b2/main
             return self.__alleles
 
         @property
         def supportedLength(self):
+<<<<<<< HEAD
             # returns the supported epitope lengths as iterable
+=======
+>>>>>>> repo-b2/main
             return self.__supported_length
 
         @property
         def version(self):
+<<<<<<< HEAD
             # returns the version of the predictor
+=======
+>>>>>>> repo-b2/main
             return self.__version
 
         def _represent(self, allele):
@@ -550,6 +625,7 @@ try:
             Rohit Bhattacharya, Ashok Sivakumar, Collin Tokheim, Violeta Beleva Guthrie, Valsamo Anagnostou,
             Victor E. Velculescu, Rachel Karchin (2017) bioRxiv
         """
+<<<<<<< HEAD
         __alleles = frozenset(["HLA-DPA1*01:03-DPB1*02:01", "HLA-DPA1*01:03-DPB1*03:01", "HLA-DPA1*01:03-DPB1*04:01",
                                "HLA-DPA1*01:03-DPB1*04:02", "HLA-DPA1*02:01-DPB1*01:01", "HLA-DPA1*02:01-DPB1*05:01",
                                "HLA-DPA1*02:02-DPB1*05:01", "HLA-DPA1*03:01-DPB1*04:02", "HLA-DPB1*01:01",
@@ -596,21 +672,43 @@ try:
         @property
         def name(self):
             # returns the name of the predictor
+=======
+        __name = "mhcnuggets-class-2"
+        __version = "2.3.2"
+        __supported_length = frozenset(
+            [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30])
+        __allele_import_name = f"{__name}_{__version}".replace('-', '_').replace('.', '_')
+        __alleles = getattr(__import__("epytope.Data.supportedAlleles.ann." + __allele_import_name,
+                                       fromlist=[__allele_import_name])
+                            , __allele_import_name)
+
+        @property
+        def name(self):
+>>>>>>> repo-b2/main
             return self.__name
 
         @property
         def supportedAlleles(self):
+<<<<<<< HEAD
             # returns the supported alleles as strings (without the HLA prefix)
+=======
+>>>>>>> repo-b2/main
             return self.__alleles
 
         @property
         def supportedLength(self):
+<<<<<<< HEAD
             # returns the supported epitope lengths as iterable
+=======
+>>>>>>> repo-b2/main
             return self.__supported_length
 
         @property
         def version(self):
+<<<<<<< HEAD
             # returns the version of the predictor
+=======
+>>>>>>> repo-b2/main
             return self.__version
 
         def _represent(self, allele):
@@ -630,6 +728,22 @@ try:
             else:
                 return "%s-%s%s:%s" % (allele.organism, allele.locus, allele.supertype, allele.subtype)
 
+<<<<<<< HEAD
+=======
+        def convert_alleles(self, alleles):
+            """
+            Converts :class:`~epytope.Core.Allele.Allele` into the internal :class:`~epytope.Core.Allele.Allele` representation
+            of the predictor and returns a string representation
+
+            :param alleles: The :class:`~epytope.Core.Allele.Allele` for which the internal predictor representation is
+                            needed
+            :type alleles: :class:`~epytope.Core.Allele.Allele`
+            :return: Returns a string representation of the input :class:`~epytope.Core.Allele.Allele`
+            :rtype: list(str)
+            """
+            return [self._represent(a) for a in alleles]
+
+>>>>>>> repo-b2/main
         # Converts the internal mhcnuggets-class-2 representation back into a epytope representation
         def revert_allele_repr(self, name):
             if name.startswith("H-2-"):
@@ -659,6 +773,7 @@ try:
              "MHCflurry: Open-Source Class I MHC Binding Affinity Prediction," Cell Systems, 2018.
               Available at: https://www.cell.com/cell-systems/fulltext/S2405-4712(18)30232-1.
         """
+<<<<<<< HEAD
         __alleles = frozenset(
             ["HLA-A*01:01", "HLA-A*02:01", "HLA-A*02:02", "HLA-A*02:03", "HLA-A*02:05", "HLA-A*02:06", "HLA-A*02:07",
              "HLA-A*02:11", "HLA-A*02:12", "HLA-A*02:16", "HLA-A*02:17", "HLA-A*02:19", "HLA-A*02:50", "HLA-A*03:01",
@@ -681,21 +796,42 @@ try:
         @property
         def name(self):
             # returns the name of the predictor
+=======
+        __name = "mhcflurry"
+        __version = "1.2.2"
+        __supported_length = frozenset([8, 9, 10, 11, 12, 13, 14, 15])
+        __allele_import_name = f"{__name}_{__version}".replace('.', '_')
+        __alleles = getattr(__import__("epytope.Data.supportedAlleles.ann." + __allele_import_name,
+                                       fromlist=[__allele_import_name])
+                            , __allele_import_name)
+
+        @property
+        def name(self):
+>>>>>>> repo-b2/main
             return self.__name
 
         @property
         def supportedAlleles(self):
+<<<<<<< HEAD
             # returns the supported alleles as strings (without the HLA prefix)
+=======
+>>>>>>> repo-b2/main
             return self.__alleles
 
         @property
         def supportedLength(self):
+<<<<<<< HEAD
             # returns the supported epitope lengths as iterable
+=======
+>>>>>>> repo-b2/main
             return self.__supported_length
 
         @property
         def version(self):
+<<<<<<< HEAD
             # returns the version of the predictor
+=======
+>>>>>>> repo-b2/main
             return self.__version
 
         def _represent(self, allele):
@@ -821,6 +957,7 @@ try:
              "MHCflurry: Open-Source Class I MHC Binding Affinity Prediction," Cell Systems, 2018.
               Available at: https://www.cell.com/cell-systems/fulltext/S2405-4712(18)30232-1.
         """
+<<<<<<< HEAD
         # retrieved with `mhcflurry-predict --list-supported-alleles`
         __alleles = frozenset(["HLA-A*01:01", "HLA-A*02:01", "HLA-A*02:02", "HLA-A*02:03", "HLA-A*02:05",
                                "HLA-A*02:06", "HLA-A*02:07", "HLA-A*02:11", "HLA-A*02:12", "HLA-A*02:16",
@@ -849,21 +986,42 @@ try:
         @property
         def name(self):
             # returns the name of the predictor
+=======
+        __name = "mhcflurry"
+        __version = "1.4.3"
+        __supported_length = frozenset([8, 9, 10, 11, 12, 13, 14, 15])
+        __allele_import_name = f"{__name}_{__version}".replace('.', '_')
+        __alleles = getattr(__import__("epytope.Data.supportedAlleles.ann." + __allele_import_name,
+                                       fromlist=[__allele_import_name])
+                            , __allele_import_name)
+
+        @property
+        def name(self):
+>>>>>>> repo-b2/main
             return self.__name
 
         @property
         def supportedAlleles(self):
+<<<<<<< HEAD
             # returns the supported alleles as strings (without the HLA prefix)
+=======
+>>>>>>> repo-b2/main
             return self.__alleles
 
         @property
         def supportedLength(self):
+<<<<<<< HEAD
             # returns the supported epitope lengths as iterable
+=======
+>>>>>>> repo-b2/main
             return self.__supported_length
 
         @property
         def version(self):
+<<<<<<< HEAD
             # returns the version of the predictor
+=======
+>>>>>>> repo-b2/main
             return self.__version
 
         def _represent(self, allele):
@@ -879,6 +1037,22 @@ try:
             else:
                 return "%s-%s*%s:%s" % (allele.organism, allele.locus, allele.supertype, allele.subtype)
 
+<<<<<<< HEAD
+=======
+        def convert_alleles(self, alleles):
+            """
+            Converts :class:`~epytope.Core.Allele.Allele` into the internal :class:`~epytope.Core.Allele.Allele` representation
+            of the predictor and returns a string representation
+
+            :param alleles: The :class:`~epytope.Core.Allele.Allele` for which the internal predictor representation is
+                            needed
+            :type alleles: :class:`~epytope.Core.Allele.Allele`
+            :return: Returns a string representation of the input :class:`~epytope.Core.Allele.Allele`
+            :rtype: list(str)
+            """
+            return [self._represent(a) for a in alleles]
+
+>>>>>>> repo-b2/main
         # Converts the internal MHCFlurry representation back into a epytope representation
         def revert_allele_repr(self, name):
             if name.startswith("H-2-"):

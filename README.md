@@ -6,7 +6,8 @@
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/epytope/badges/version.svg)](https://anaconda.org/bioconda/epytope)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/epytope/badges/latest_release_date.svg)](https://anaconda.org/bioconda/epytope)
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/epytope/badges/installer/conda.svg)](https://conda.anaconda.org/bioconda)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/epytope/badges/platforms.svg
+)](https://anaconda.org/bioconda/epytope)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/epytope/badges/downloads.svg)](https://anaconda.org/bioconda/epytope)
 
 Copyright 2014 by Benjamin Schuber, Mathias Walzer, Philipp Brachvogel, Andras Szolek, Christopher Mohr, and Oliver Kohlbacher
@@ -62,7 +63,7 @@ Currently **epytope** provides implementations of several prediction methods or 
   - [NetMHC](https://pubmed.ncbi.nlm.nih.gov/26515819/) 3.0, 3.4, 4.0
   - [NetMHCII](https://pubmed.ncbi.nlm.nih.gov/29315598/) 2.2, 2.3
   - [NetMHCpan](https://pubmed.ncbi.nlm.nih.gov/28978689/) 2.4, 2.8, 3.0, 4.0, 4.1
-  - [NetMHCIIpan](https://pubmed.ncbi.nlm.nih.gov/32406916/) 3.0, 3.1, 4.0, 4.1
+  - [NetMHCIIpan](https://pubmed.ncbi.nlm.nih.gov/38000035/) 3.0, 3.1, 4.0, 4.1, 4.2, 4.3
   - [PickPocket](https://pubmed.ncbi.nlm.nih.gov/19297351/) 1.1
   - [NetCTLpan](https://pubmed.ncbi.nlm.nih.gov/20379710/) 1.1
 - Epitope Selection
