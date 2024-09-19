@@ -32,7 +32,8 @@ class TestIRDatasetAdapters(unittest.TestCase):
                      "mcpas-tcr": os.path.join(os.path.dirname(__file__), "../../Data/examples/test_mcpas_example.csv"),
                      "iedb": os.path.join(os.path.dirname(__file__), "../../Data/examples/test_iedb_example.csv"),
                      "scirpy": os.path.join(os.path.dirname(__file__), "../../Data/examples/test_adata_example.h5ad"),
-                     "airr": [os.path.join(os.path.dirname(__file__), "../../Data/examples/test_airr_example_alpha.tsv"), os.path.join(os.path.dirname(__file__), "../../Data/examples/test_airr_example_beta.tsv")]}
+                     "airr": [os.path.join(os.path.dirname(__file__), "../../Data/examples/test_airr_example_alpha.tsv"), os.path.join(os.path.dirname(__file__), "../../Data/examples/test_airr_example_beta.tsv")],
+                     "10x": os.path.join(os.path.dirname(__file__), "../../Data/examples/test_10x_example.csv")}
 
 
     def test_adapter(self):

@@ -521,3 +521,24 @@ class DfDataset(ATCRDatasetAdapter, IRDataset):
     @property
     def version(self):
         return self.__version
+
+
+class TenXAdapter(ScirpyAdapter, IRDataset):
+    __name = "10x"
+    __version = "scirpy:0.10.1"
+
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    def from_path(self, path, **kwargs):
+        import scirpy as ir
+        adata = ir.io.read_10x_vdj(path)
+        self.from_object(adata, **kwargs)

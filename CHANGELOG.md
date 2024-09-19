@@ -3,6 +3,56 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v3.4.0 - 2024-01-10
+
+### `Added`
+
+-  [#93](https://github.com/KohlbacherLab/epytope/pull/93) Added NetMHCIIpan version 4.2 interface [#92](https://github.com/KohlbacherLab/epytope/issues/92)
+-  [#96](https://github.com/KohlbacherLab/epytope/pull/96) Added NetMHCIIpan version 4.3 interface [#95](https://github.com/KohlbacherLab/epytope/issues/95)
+
+### `Changed`
+
+### `Fixed`
+
+- [#93](https://github.com/KohlbacherLab/epytope/pull/93) Fixed length restriction of NetMHCIIpan interfaces [#91](https://github.com/KohlbacherLab/epytope/issues/91)
+
+## v3.3.1 - 2023-04-25
+
+### `Added`
+
+### `Changed`
+
+- [#85](https://github.com/KohlbacherLab/epytope/pull/85) Pinned pandas version >= 1.3.5 as requested by @e-dorigatti [#84](https://github.com/KohlbacherLab/epytope/issues/84).
+
+### `Fixed`
+
+- [#83](https://github.com/KohlbacherLab/epytope/pull/83) Fixed erroneous mouse allele parsing for PSSM predictors [#82](https://github.com/KohlbacherLab/epytope/issues/82)
+
+## v3.3.0 - 2022-12-01
+
+### `Added`
+
+### `Changed`
+
+- Switch from [PyVCF](https://github.com/jamescasbon/PyVCF) to [PyVCF3](https://github.com/dridk/PyVCF3) as dependency
+
+### `Fixed`
+
+## v3.2.0 - 2022-11-02
+
+### `Added`
+
+- [#74](https://github.com/KohlbacherLab/epytope/pull/74) - Add function to `Peptide` class to determine if peptide originates from a variant
+
+### `Changed`
+
+- [#63](https://github.com/KohlbacherLab/epytope/pull/63) - Outsource supported alleles of prediction tools [#61](https://github.com/KohlbacherLab/epytope/issues/61)
+- [#69](https://github.com/KohlbacherLab/epytope/pull/69) - Improve `Ensembl` BioMart adapter [#57](https://github.com/KohlbacherLab/epytope/issues/57)
+
+### `Fixed`
+
+- [#73](https://github.com/KohlbacherLab/epytope/pull/73) - Fix `NetMHCII 4.0` parser [#72](https://github.com/KohlbacherLab/epytope/issues/72)
+
 ## v3.1.0 - 2022-06-15
 
 ### `Added`

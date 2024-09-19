@@ -1197,7 +1197,6 @@ class TULIP(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates(subset=joining_list)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
-        return df_out
     
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         if repository is not None and repository != "" and os.path.isdir(repository):
@@ -1305,7 +1304,7 @@ class NetTCR22(ARepoTCRSpecificityPrediction):
     """
     __name = "NetTCR"
     __version = "2.2"
-    __tcr_length = (1, 100000)
+    __tcr_length = (1, 9999)
     __epitope_length = (1, 12)
     __organism = "H"
     __repo = "https://github.com/mnielLab/NetTCR-2.2.git"
