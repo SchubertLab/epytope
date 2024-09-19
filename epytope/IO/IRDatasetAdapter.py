@@ -91,6 +91,7 @@ class IRDataset(metaclass=ABCMeta):
                     content[column].append(str(ir.get_chain_attribute(attribute, chain_type)))
 
         df_irs = pd.DataFrame(content)
+        #df_irs.fillna("")
         if rename_columns is not None:
             df_irs = df_irs.rename(columns=rename_columns)
         return df_irs

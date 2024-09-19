@@ -1203,7 +1203,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
             self.correct_code(repository)
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
     
-   def correct_code(self, path_repo):
+    def correct_code(self, path_repo):
         """
         The github repo does not provide full functionality, it will be corrected here.
         """
