@@ -1109,6 +1109,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
 
+
 class TULIP(ARepoTCRSpecificityPrediction):
     """
     Author: Meynard-Piganeau et al.
@@ -1197,6 +1198,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor[required_columns]
         results_predictor = results_predictor.drop_duplicates(subset=joining_list)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
     
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         if repository is not None and repository != "" and os.path.isdir(repository):
