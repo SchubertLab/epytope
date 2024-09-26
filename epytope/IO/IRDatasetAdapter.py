@@ -4,7 +4,7 @@
 """
 .. module:: IO.TCRDatasetAdapter
    :synopsis: Module handles reading of common TCR dataset file formats.
-.. moduleauthor:: albahah, drost
+.. moduleauthor:: albahah, drost, chernysheva
 
 """
 import pandas as pd
@@ -91,6 +91,7 @@ class IRDataset(metaclass=ABCMeta):
                     content[column].append(str(ir.get_chain_attribute(attribute, chain_type)))
 
         df_irs = pd.DataFrame(content)
+        #df_irs.fillna("")
         if rename_columns is not None:
             df_irs = df_irs.rename(columns=rename_columns)
         return df_irs
@@ -431,6 +432,10 @@ class AIRRAdapter(ScirpyAdapter, IRDataset):
     __version = "scirpy:0.10.1"
 
     def __init__(self):
+        """
+        The sample data epytope/Data/examples/test_airr_example_{alpha, beta}.tsv utilized for the AIRR data loader
+        was sourced from https://github.com/scverse/scirpy/tree/main/docs/tutorials/example_data/immunesim_airr, created by immuneSIM [Weber et al. 2020]
+        """
         super().__init__()
 
     @property
@@ -516,3 +521,24 @@ class DfDataset(ATCRDatasetAdapter, IRDataset):
     @property
     def version(self):
         return self.__version
+
+
+class TenXAdapter(ScirpyAdapter, IRDataset):
+    __name = "10x"
+    __version = "scirpy:0.10.1"
+
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    def from_path(self, path, **kwargs):
+        import scirpy as ir
+        adata = ir.io.read_10x_vdj(path)
+        self.from_object(adata, **kwargs)

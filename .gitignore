@@ -1,0 +1,11 @@
+*.pyc
+*.DS_Store
+epytope/doc/build/*
+epytope/.idea/*
+epytope.egg-info
+build/*
+dist/*
+.pythoscope
+.idea
+*.pyc
+epytope/tutorials/.ipynb_checkpoints/*

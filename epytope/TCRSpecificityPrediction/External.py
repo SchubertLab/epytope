@@ -1104,6 +1104,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
 
+
 class TULIP(ARepoTCRSpecificityPrediction):
     """
     Author: Meynard-Piganeau et al.
@@ -1155,17 +1156,19 @@ class TULIP(ARepoTCRSpecificityPrediction):
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide"})
         df_tcrs = df_tcrs[required_columns]
-        df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
-        df_tcrs = df_tcrs[(~df_tcrs["CDR3a"].isna()) & (df_tcrs["CDR3a"] != "")]
-        df_tcrs = df_tcrs[(~df_tcrs["MHC"].isna()) & (df_tcrs["MHC"] != "")]
-        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["MHC"] = df_tcrs["MHC"].fillna("<MIS>")
+        df_tcrs["MHC"] = df_tcrs["MHC"].replace("", "<MIS>")
+        df_tcrs["CDR3a"] = df_tcrs["CDR3a"].fillna("<MIS>")
+        df_tcrs["CDR3a"] = df_tcrs["CDR3a"].replace("", "<MIS>")
+        df_tcrs["CDR3b"] = df_tcrs["CDR3b"].fillna("<MIS>")
+        df_tcrs["CDR3b"] = df_tcrs["CDR3b"].replace("", "<MIS>")
+        df_tcrs = df_tcrs.drop_duplicates().reset_index()
         df_tcrs["binder"] = 1
         return df_tcrs
     
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = "pretrained/multiTCR_s_mhcX_2_below20out" if "model" not in kwargs else kwargs["model"]
-        model = f"{self.repository_path}/model_weights/{model}"
+        model = f"{self.repository_path}/model_weights/pytorch_model.bin" if "model" not in kwargs else {kwargs["model"]}
         config = f"{self.repository_path}/configs/shallow.config.json"
         return f"predict.py --test_dir {filenames[0]} --modelconfig {config} --load {model} --output {tmp_folder.name}/ >> {filenames[1]}"
 
@@ -1181,44 +1184,41 @@ class TULIP(ARepoTCRSpecificityPrediction):
         joining_list = ["VJ_cdr3", "VDJ_cdr3", "Epitope", "MHC"]
         results_predictor = results_predictor.rename(columns={"CDR3b": "VDJ_cdr3",
                                                               "CDR3a": "VJ_cdr3",
-                                                              "peptide": "Epitope"})
+                                                              "peptide": "Epitope",
+                                                              "score": "Score"})
+        results_predictor["MHC"] = results_predictor["MHC"].replace("<MIS>", None)
+        results_predictor["VJ_cdr3"] = results_predictor["VJ_cdr3"].replace("<MIS>", "")
+        results_predictor["VDJ_cdr3"] = results_predictor["VDJ_cdr3"].replace("<MIS>", "")
         required_columns = joining_list + ["Score"]
         results_predictor = results_predictor[required_columns]
+        results_predictor = results_predictor.drop_duplicates(subset=joining_list)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
     
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
-        processor = "cpu" if "processor" not in kwargs else kwargs["processor"]
         if repository is not None and repository != "" and os.path.isdir(repository):
-            self.correct_code(repository, processor)
+            self.correct_code(repository)
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
     
-    def correct_code(self, path_repo, processor):
+    def correct_code(self, path_repo):
         """
-        The github repo contains several bugs, which will be corrected here.
+        The github repo does not provide full functionality, it will be corrected here.
         """
         script = []
         changed = 0
         with open(os.path.join(path_repo, "predict.py"), "r") as f:
             script.extend(f.readlines())
-        # delete line with not defined argument
-        if "    train_path = args.train_dir\n" in script:
-            script.remove("    train_path = args.train_dir\n")
-            changed = 1
         # change output
         if '        results["rank"] = ranks\n' in script:
             idx = script.index('        results["rank"] = ranks\n')
-            script[idx] = '        results["Score"] = scores\n        results["MHC"] = datasetPetideSpecific.MHC\n'
+            script[idx] = '        results["MHC"] = datasetPetideSpecific.MHC\n'
             changed = 1
-        #correct path
-        if '        results.to_csv(args.save + target_peptide+".csv")\n' in script:
-            idx = script.index('        results.to_csv(args.save + target_peptide+".csv")\n')
-            script[idx] = '        results.to_csv(args.output + target_peptide+".csv")\n'
+        #remove auc calculation
+        if "        auce = roc_auc_score(datasetPetideSpecific.binder, ranks)\n" in script:
+            script.remove("        auce = roc_auc_score(datasetPetideSpecific.binder, ranks)\n")
             changed = 1
-        #allow cpu
-        if processor == "cpu" and '        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n' in script:
-            idx = script.index('        checkpoint = torch.load(args.load+"/pytorch_model.bin")\n')
-            script[idx] = '        checkpoint = torch.load(args.load+"/pytorch_model.bin", map_location=torch.device("cpu"))\n'
+        if "        print(auce)\n" in script:
+            script.remove("        print(auce)\n")
             changed = 1
         if changed == 1:
             with open(os.path.join(path_repo, "predict.py"), "w") as f:
@@ -1289,6 +1289,109 @@ class iTCep(ARepoTCRSpecificityPrediction):
                                                               "peptide": "Epitope",
                                                               "Probability": "Score"})
         required_columns = ["VDJ_cdr3", "Epitope", "Score"]
+        results_predictor = results_predictor[required_columns]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+class NetTCR22(ARepoTCRSpecificityPrediction):
+    """
+    Author: Fynbo Jensen, Nielsen
+    Paper: https://www.biorxiv.org/content/10.1101/2023.10.12.562001v1.full
+    Repo: https://github.com/mnielLab/NetTCR-2.2
+    """
+    __name = "NetTCR"
+    __version = "2.2"
+    __tcr_length = (1, 9999)
+    __epitope_length = (1, 12)
+    __organism = "H"
+    __repo = "https://github.com/mnielLab/NetTCR-2.2.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "cdr3_beta_aa",
+        "VDJ_v_gene": "TRBV_IMGT",
+        "VDJ_j_gene": "TRBJ_IMGT",
+        "VJ_cdr3": "cdr3_alpha_aa",
+        "VJ_v_gene": "TRAV_IMGT",
+        "VJ_j_gene": "TRAJ_IMGT",
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    @property
+    def organism(self):
+        return self.__organism
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide"})
+        for col in self._rename_columns.values():
+            df_tcrs = df_tcrs[(~df_tcrs[col].isna()) & (df_tcrs[col]!='nan') & (df_tcrs[col]!="")]
+        df_tcrs = df_tcrs[(~df_tcrs["organism"].isna()) & (df_tcrs["organism"]!='nan') & (df_tcrs["organism"]!="")]
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["binder"] =  0
+        return df_tcrs
+
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        path_in_raw = os.path.join(tmp_folder.name, f"{self.name}_raw_input.csv")
+        path_in_intermediate = os.path.join(tmp_folder.name, f"{self.name}_intermediate_input.csv")
+        path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
+        model = "t.0.v.1" if "model" not in kwargs else kwargs["model"]
+        path_out = os.path.join(f"{self.repository_path}", "models/nettcr_2_2_pan", f"{model}_prediction.csv")
+        data.to_csv(path_in_raw)
+        return [path_in_raw, path_in_intermediate, path_in, path_out], tmp_folder
+
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        path_utils = os.path.dirname(__file__)
+        model = "t.0.v.1" if "model" not in kwargs else kwargs["model"]
+        modeldir = f"{self.repository_path}/models/nettcr_2_2_pan"
+        cmd_reconstruct = f"{path_utils}/Utils.py nettcr {filenames[0]} {filenames[1]} {filenames[2]}"
+        cmd_predict = f"{self.repository_path}/src/predict.py --test_data {filenames[2]} --outdir {modeldir} --model_name {model} --model_type pan"
+        return [cmd_reconstruct, cmd_predict]
+
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        super().run_exec_cmd(cmd[0], [None, filenames[2]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+        super().run_exec_cmd(cmd[1], [None, filenames[3]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+
+
+
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):  
+        results_predictor = pd.read_csv(filenames[3])
+        results_predictor = results_predictor.fillna("")
+        joining_list = ["VJ_cdr3", "VDJ_cdr3", "VDJ_v_gene", "VDJ_j_gene", "VJ_v_gene", "VJ_j_gene", "Epitope"]
+        results_predictor = results_predictor.rename(columns={"cdr3_beta_aa": "VDJ_cdr3",
+                                                              "TRBV_IMGT": "VDJ_v_gene",
+                                                              "TRBJ_IMGT": "VDJ_j_gene",
+                                                              "cdr3_alpha_aa": "VJ_cdr3",
+                                                              "TRAV_IMGT": "VJ_v_gene",
+                                                              "TRAJ_IMGT": "VJ_j_gene",
+                                                              "peptide": "Epitope",
+                                                              "prediction": "Score"})
+        required_columns = joining_list + ["Score"]
         results_predictor = results_predictor[required_columns]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out

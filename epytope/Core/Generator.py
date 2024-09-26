@@ -241,7 +241,6 @@ def generate_peptides_from_variants(vars, length, dbadapter, id_type, peptides=N
 
     prots = []
     for tId, vs in transToVar.items():
-        #print tId
         query = dbadapter.get_transcript_information(tId, type=id_type, _db=db)
         if query is None:
             logging.warning("Transcript with ID %s not found in DB or sequence unavailable"%tId)
