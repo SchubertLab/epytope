@@ -12,16 +12,9 @@ import warnings
 import bisect
 
 from Bio import SeqIO
-<<<<<<< HEAD
-from epytope.Core.Base import deprecated
 
 
 class UniProtDB:
-    @deprecated  # TODO: refactor ... function based on old code
-=======
-
-class UniProtDB:
->>>>>>> repo-b2/main
     def __init__(self, name='fdb'):
         """
         UniProtDB class to give quick access to entries (fast exact match searches) and convenient ways to produce
@@ -42,11 +35,7 @@ class UniProtDB:
         """
         self.name = name
         self.collection = {}  # all the biopython seq records in a dict keyed by the id of the record
-<<<<<<< HEAD
-        self.searchstring = ''  # all sequences concatenated with a '#'
-=======
         self.search_string = ''  # all sequences concatenated with a '#'
->>>>>>> repo-b2/main
         self.accs = list()  # all accessions in respective order to searchstring
         self.idx = list()  # all indices of starting strings in the searchstring in respective order
 
@@ -61,11 +50,7 @@ class UniProtDB:
         recs = sequence_file
         if not isinstance(sequence_file, dict) and not isinstance(sequence_file, list):
             try:
-<<<<<<< HEAD
-                with open(sequence_file, 'rb') as f:
-=======
                 with open(sequence_file, 'r') as f:
->>>>>>> repo-b2/main
                     if sequence_file.endswith('.fa') or sequence_file.endswith('.fasta'):
                         recs = SeqIO.to_dict(SeqIO.parse(f, "fasta"))
                     else:  # assume it is a dat file
@@ -77,11 +62,7 @@ class UniProtDB:
             recs = SeqIO.to_dict(sequence_file)
         if recs:
             self.collection.update(recs)
-<<<<<<< HEAD
-            self.searchstring = '#'.join([str(x.seq) for x in self.collection.values()]).decode('ascii')
-=======
             self.search_string = '#'.join([str(x.seq) for x in self.collection.values()])#.decode('ascii')
->>>>>>> repo-b2/main
             self.accs = list(self.collection.keys())
             self.idx = list()
             self.idx.append(0)
@@ -106,11 +87,7 @@ class UniProtDB:
         :return: True, if it is found somewhere, False otherwise
         """
         if isinstance(seq, str):
-<<<<<<< HEAD
-            index = self.searchstring.find(seq)
-=======
             index = self.search_string.find(seq)
->>>>>>> repo-b2/main
             if index >= 0:
                 return True
             else:
@@ -127,11 +104,7 @@ class UniProtDB:
         """
         if isinstance(seq, str):
             ids = 'null'
-<<<<<<< HEAD
-            index = self.searchstring.find(seq)
-=======
             index = self.search_string.find(seq)
->>>>>>> repo-b2/main
             if index >= 0:
                 j = bisect.bisect(self.idx, index) - 1
                 ids = self.accs[j]
@@ -141,11 +114,7 @@ class UniProtDB:
             for i in seq:
                 ids.append('null')
             for i, v in enumerate(seq):
-<<<<<<< HEAD
-                index = self.searchstring.find(v)
-=======
                 index = self.search_string.find(v)
->>>>>>> repo-b2/main
                 if index >= 0:
                     j = bisect.bisect(self.idx, index) - 1
                     ids[i] = self.accs[j]
@@ -164,13 +133,8 @@ class UniProtDB:
             ids = 'null'
             index = 0
             searchstring_length = len(seq)
-<<<<<<< HEAD
-            while index < len(self.searchstring):
-                index = self.searchstring.find(seq, index)
-=======
             while index < len(self.search_string):
                 index = self.search_string.find(seq, index)
->>>>>>> repo-b2/main
                 if index == -1:
                     break
                 j = bisect.bisect(self.idx, index) - 1
@@ -187,13 +151,8 @@ class UniProtDB:
             for i, v in enumerate(seq):
                 index = 0
                 searchstring_length = len(v)
-<<<<<<< HEAD
-                while index < len(self.searchstring):
-                    index = self.searchstring.find(v, index)
-=======
                 while index < len(self.search_string):
                     index = self.search_string.find(v, index)
->>>>>>> repo-b2/main
                     if index == -1:
                         break
                     j = bisect.bisect(self.idx, index) - 1
