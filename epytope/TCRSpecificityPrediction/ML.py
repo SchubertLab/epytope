@@ -341,6 +341,11 @@ class TITAN(ACmdTCRSpecificityPrediction):
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         df_tcrs = tcrs.to_pandas()
+        if df_tcrs["organism"].unique()[0] == "MusMusculus" and df_tcrs["organism"].nunique() == 1:
+            self.organism_in = "mouse"
+        else:
+            self.organism_in = "human"
+
         df_tcrs["VDJ_v_gene"] = df_tcrs["VDJ_v_gene"].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
         df_tcrs["VDJ_j_gene"] = df_tcrs["VDJ_j_gene"].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
         df_tcrs = df_tcrs[df_tcrs["VDJ_v_gene"].isin(self._v_regions) & df_tcrs["VDJ_j_gene"].isin(self._j_regions)]
@@ -398,7 +403,11 @@ class TITAN(ACmdTCRSpecificityPrediction):
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         path_module = self.get_package_dir("paccmann_tcr", interpreter, conda, cmd_prefix).split(os.sep)[:-1] + [".."]
 
-        path_imgt = os.sep.join(path_module + ["datasets", "imgt"])
+        if self.organism_in == "mouse":
+            path_imgt = os.sep.join(path_module + ["datasets", "imgt_mouse"])
+        else:
+            path_imgt = os.sep.join(path_module + ["datasets", "imgt"])
+
         if not os.path.exists(os.sep.join([path_imgt, "V_segment_sequences.fasta"])) or \
                 not os.path.exists(os.sep.join([path_imgt, "J_segment_sequences.fasta"])):
             raise NotADirectoryError(f"Please download the V and J segment files from "

@@ -788,6 +788,11 @@ class Ergo1(ARepoTCRSpecificityPrediction):
         df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
         df_tcrs = df_tcrs.drop_duplicates()
         df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
+
+        if len(df_tcrs) % 50 == 0:
+            # If the length of samples is devisible by the batch size, something weird happens
+            df_tcrs.loc[df_tcrs.index.max()+1] = df_tcrs.iloc[-1]
+
         return df_tcrs
 
     def save_tmp_files(self, data, **kwargs):
@@ -809,6 +814,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[1], sep='\t', names=["VDJ_cdr3", "Epitope", "Score"], header=None)
+        results_predictor = results_predictor.drop_duplicates()
         joining_list = ["Epitope", "VDJ_cdr3"]
         results_predictor = results_predictor[joining_list + ["Score"]]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
