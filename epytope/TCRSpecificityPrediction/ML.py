@@ -348,7 +348,8 @@ class TITAN(ACmdTCRSpecificityPrediction):
 
         df_tcrs["VDJ_v_gene"] = df_tcrs["VDJ_v_gene"].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
         df_tcrs["VDJ_j_gene"] = df_tcrs["VDJ_j_gene"].apply(lambda x: x if re.search(r"\*\d+$", x) else x + "*01")
-        df_tcrs = df_tcrs[df_tcrs["VDJ_v_gene"].isin(self._v_regions) & df_tcrs["VDJ_j_gene"].isin(self._j_regions)]
+        if self.organism_in == "human":
+            df_tcrs = df_tcrs[df_tcrs["VDJ_v_gene"].isin(self._v_regions) & df_tcrs["VDJ_j_gene"].isin(self._j_regions)]
         df_tcrs = df_tcrs[(~df_tcrs["VDJ_cdr3"].isna()) & (df_tcrs["VDJ_cdr3"] != "")]
 
         df_tcrs_unique = df_tcrs.drop_duplicates().copy()
