@@ -85,8 +85,6 @@ class Peptide(MetadataLogger, Seq):
             lines.append("in PROTEIN: %s" % p_id)
         return '\n'.join(lines)
 
-<<<<<<< HEAD
-=======
     """
     Determines whether the :class:`~epytope.Core.Peptide.Peptide` is generated from a variant in the corresponding :class:`~epytope.Core.Protein.Protein`.
 
@@ -110,7 +108,6 @@ class Peptide(MetadataLogger, Seq):
                                 return True
         return False
 
->>>>>>> repo-b2/main
     def get_all_proteins(self):
         """
         Returns all :class:`~epytope.Core.Protein.Protein` objects associated with the

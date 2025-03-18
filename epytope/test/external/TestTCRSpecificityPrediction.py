@@ -54,7 +54,7 @@ class TestTCRSpecificityPrediction(unittest.TestCase):
         # Sample Eptiopes
 
         epitope1 = TCREpitope("FLRGRAYGL", allele=Allele("HLA-B*08:01"))
-        epitope2 = TCREpitope("HSKRKCDEL", allele=Allele("HLA-A*02:01"))
+        epitope2 = TCREpitope("GILGFVFTL", allele=Allele("HLA-A*02:01"))
         cls.epitopes = [epitope1, epitope2]
 
         # Sample TCRs

@@ -642,7 +642,7 @@ class STAPLER(ACmdTCRSpecificityPrediction):
         df_tcrs = df_tcrs[list(self._rename_columns.values()) + ["epitope_aa", "organism"]]
         for col in self._rename_columns.values():
             df_tcrs = df_tcrs[(~df_tcrs[col].isna()) & (df_tcrs[col]!='nan')]
-        df_tcrs["label_true_pair"] =  0
+        df_tcrs["label_true_pair"] = 0
         df_tcrs = df_tcrs.drop_duplicates()
         return df_tcrs
 

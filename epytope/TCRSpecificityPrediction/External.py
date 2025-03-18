@@ -50,7 +50,6 @@ class ARepoTCRSpecificityPrediction(ACmdTCRSpecificityPrediction):
                                      f"'git clone {self.repo}'")
         self.repository_path = os.path.abspath(repository)
 
-
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         old_dir = os.getcwd()
         os.chdir(repository)
@@ -112,7 +111,7 @@ class Ergo2(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -226,7 +225,7 @@ class pMTnet(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -313,7 +312,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -323,7 +322,8 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
         rename_columns = {
             "VDJ_cdr3": "CDR3b",
         }
-        required_columns = list(rename_columns.values()) + ["epitope", "binder"] + (self._model_input=="cem") * ["HLA"]
+        required_columns = list(rename_columns.values()) + ["epitope", "binder"] + (self._model_input == "cem") * [
+            "HLA"]
         df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
         if pairwise:
             df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
@@ -332,7 +332,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs.rename(columns={"Epitope": "epitope", "MHC": "HLA"})
         df_tcrs = self.filter_by_length(df_tcrs, None, "CDR3b", "epitope")
         df_tcrs = df_tcrs[(~df_tcrs["CDR3b"].isna()) & (df_tcrs["CDR3b"] != "")]
-        df_tcrs["binder"] = 1  
+        df_tcrs["binder"] = 1
         df_tcrs = df_tcrs[required_columns]
         df_tcrs.drop_duplicates(inplace=True, keep="first")
 
@@ -355,7 +355,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
 
             def custom_formatwarning(message, category, filename, lineno, line=''):
                 return category.__name__ + ": " + str(message) + "\n"
-    
+
             warnings.formatwarning = custom_formatwarning
             if df_tcrs["MHC"].isna().sum() > 0:
                 warnings.warn(f"{df_tcrs['MHC'].isna().sum()} entries do not have exact HLA allele matches in the MHC "
@@ -392,7 +392,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
             joining_list.append("MHC")
             required_columns.append("MHC")
             rename_dict["HLA"] = "MHC"
-            
+
         results_predictor = results_predictor.rename(columns=rename_dict)
 
         results_predictor = results_predictor[required_columns]
@@ -433,7 +433,7 @@ class ATM_TCR(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -488,7 +488,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
     __name = "AttnTAP"
     __version = ""
     __trc_length = (6, 30)
-    __epitope_length = (0, 9) # TODO check one more time
+    __epitope_length = (0, 9)  # TODO check one more time
     __organism = "H"
     __repo = "https://github.com/Bioinformatics7181/AttnTAP.git"
 
@@ -511,7 +511,7 @@ class AttnTAP(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -591,7 +591,7 @@ class TEIM(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -678,7 +678,7 @@ class BERTrand(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -773,7 +773,7 @@ class Ergo1(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -853,7 +853,7 @@ class TEINet(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -936,7 +936,7 @@ class PanPep(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -1001,7 +1001,7 @@ class DLpTCR(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -1146,7 +1146,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
     @property
     def organism(self):
         return self.__organism
-    
+
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
         required_columns = list(self._rename_columns.values()) + ["peptide", "MHC"]
         df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
@@ -1165,14 +1165,14 @@ class TULIP(ARepoTCRSpecificityPrediction):
         df_tcrs = df_tcrs.drop_duplicates().reset_index()
         df_tcrs["binder"] = 1
         return df_tcrs
-    
 
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
-        model = f"{self.repository_path}/model_weights/pytorch_model.bin" if "model" not in kwargs else {kwargs["model"]}
+        model = f"{self.repository_path}/model_weights/pytorch_model.bin" if "model" not in kwargs else {
+            kwargs["model"]}
         config = f"{self.repository_path}/configs/shallow.config.json"
         return f"predict.py --test_dir {filenames[0]} --modelconfig {config} --load {model} --output {tmp_folder.name}/ >> {filenames[1]}"
 
-    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):  
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         csv_files = list(filter(lambda f: f.endswith(".csv"), os.listdir(tmp_folder.name)))
         csv_files.remove(f"{self.name}_input.csv")
         csv_files.remove(f"{self.name}_output.csv")
@@ -1194,12 +1194,12 @@ class TULIP(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor.drop_duplicates(subset=joining_list)
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
-    
+
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, repository="", **kwargs):
         if repository is not None and repository != "" and os.path.isdir(repository):
             self.correct_code(repository)
         super().run_exec_cmd(cmd, filenames, interpreter, conda, cmd_prefix, repository)
-    
+
     def correct_code(self, path_repo):
         """
         The github repo does not provide full functionality, it will be corrected here.
@@ -1213,7 +1213,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
             idx = script.index('        results["rank"] = ranks\n')
             script[idx] = '        results["MHC"] = datasetPetideSpecific.MHC\n'
             changed = 1
-        #remove auc calculation
+        # remove auc calculation
         if "        auce = roc_auc_score(datasetPetideSpecific.binder, ranks)\n" in script:
             script.remove("        auce = roc_auc_score(datasetPetideSpecific.binder, ranks)\n")
             changed = 1
@@ -1223,6 +1223,7 @@ class TULIP(ARepoTCRSpecificityPrediction):
         if changed == 1:
             with open(os.path.join(path_repo, "predict.py"), "w") as f:
                 f.writelines(script)
+
 
 class iTCep(ARepoTCRSpecificityPrediction):
     """
@@ -1260,7 +1261,7 @@ class iTCep(ARepoTCRSpecificityPrediction):
     @property
     def repo(self):
         return self.__repo
-    
+
     @property
     def organism(self):
         return self.__organism
@@ -1292,6 +1293,7 @@ class iTCep(ARepoTCRSpecificityPrediction):
         results_predictor = results_predictor[required_columns]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
         return df_out
+
 
 class NetTCR22(ARepoTCRSpecificityPrediction):
     """
@@ -1347,10 +1349,10 @@ class NetTCR22(ARepoTCRSpecificityPrediction):
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
         df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide"})
         for col in self._rename_columns.values():
-            df_tcrs = df_tcrs[(~df_tcrs[col].isna()) & (df_tcrs[col]!='nan') & (df_tcrs[col]!="")]
-        df_tcrs = df_tcrs[(~df_tcrs["organism"].isna()) & (df_tcrs["organism"]!='nan') & (df_tcrs["organism"]!="")]
+            df_tcrs = df_tcrs[(~df_tcrs[col].isna()) & (df_tcrs[col] != 'nan') & (df_tcrs[col] != "")]
+        df_tcrs = df_tcrs[(~df_tcrs["organism"].isna()) & (df_tcrs["organism"] != 'nan') & (df_tcrs["organism"] != "")]
         df_tcrs = df_tcrs.drop_duplicates()
-        df_tcrs["binder"] =  0
+        df_tcrs["binder"] = 0
         return df_tcrs
 
     def save_tmp_files(self, data, **kwargs):
@@ -1363,7 +1365,6 @@ class NetTCR22(ARepoTCRSpecificityPrediction):
         data.to_csv(path_in_raw)
         return [path_in_raw, path_in_intermediate, path_in, path_out], tmp_folder
 
-
     def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         path_utils = os.path.dirname(__file__)
         model = "t.0.v.1" if "model" not in kwargs else kwargs["model"]
@@ -1372,14 +1373,11 @@ class NetTCR22(ARepoTCRSpecificityPrediction):
         cmd_predict = f"{self.repository_path}/src/predict.py --test_data {filenames[2]} --outdir {modeldir} --model_name {model} --model_type pan"
         return [cmd_reconstruct, cmd_predict]
 
-
     def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
         super().run_exec_cmd(cmd[0], [None, filenames[2]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
         super().run_exec_cmd(cmd[1], [None, filenames[3]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
 
-
-
-    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):  
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
         results_predictor = pd.read_csv(filenames[3])
         results_predictor = results_predictor.fillna("")
         joining_list = ["VJ_cdr3", "VDJ_cdr3", "VDJ_v_gene", "VDJ_j_gene", "VJ_v_gene", "VJ_j_gene", "Epitope"]
@@ -1394,4 +1392,131 @@ class NetTCR22(ARepoTCRSpecificityPrediction):
         required_columns = joining_list + ["Score"]
         results_predictor = results_predictor[required_columns]
         df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+
+class MixTCRpred(ARepoTCRSpecificityPrediction):
+    """
+    Author: Croce et al.
+    Paper: https://www.frontiersin.org/articles/10.3389/fimmu.2022.893247/full
+    Repo: https://github.com/GfellerLab/MixTCRpred
+    """
+    __name = "MixTCRpred"
+    __version = ""
+    __trc_length = (0, 20)  # TODO
+    __epitope_length = (0, 999999)
+    __organism = "HM"
+    __repo = "https://www.nature.com/articles/s41467-024-47461-8"
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__trc_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    @property
+    def organism(self):
+        return self.__organism
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        rename_columns = {
+            "VJ_cdr3": "cdr3_TRA",
+            "VDJ_cdr3": "cdr3_TRB",
+            "VJ_v_gene": "TRAV",
+            "VJ_j_gene": "TRAJ",
+            "VDJ_v_gene": "TRBV",
+            "VDJ_j_gene": "TRBJ"
+        }
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs[list(rename_columns.values())]
+        df_tcrs = self.filter_by_length(df_tcrs, "cdr3_TRA", "cdr3_TRB", None)
+        for el in rename_columns.values():
+            df_tcrs = df_tcrs[(~df_tcrs[el].isna()) & (df_tcrs[el] != "")]
+        df_tcrs = df_tcrs.drop_duplicates()
+        return df_tcrs
+
+    def download_models(self, **kwargs):
+        path_models = os.path.join(kwargs["repository"], "pretrained_models")
+        n_files = len([f for f in os.listdir(path_models)])
+        if n_files < 148:
+            cmd = f"python {kwargs['repository']}/MixTCRpred.py --download_all"
+            path_file = os.path.join(path_models, "model_A0101_ATDALMTGF.ckpt")
+            self.run_exec_cmd(cmd, path_file, **kwargs)
+
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        paths = []
+        for _, row in data[["Epitope", "MHC"]].iterrows():
+            epitope = row["Epitope"]  # TODO transform mhc / epitope
+            mhc = row["MHC"]
+
+            data_epitope = data[(data["Epitope"] == epitope) & (data["MHC"] == mhc)]
+            cols = ["cdr3_TRA", "cdr3_TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]
+            data_epitope = data_epitope[cols].copy()
+
+            path_in = os.path.join(tmp_folder, f"input_{mhc}_{epitope}.csv")
+            path_out = os.path.join(tmp_folder, f"output_{mhc}_{epitope}.csv")
+
+            paths.append(path_in)
+            paths.append(path_out)
+            data_epitope.to_csv(path_in)
+        return paths, tmp_folder
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        batch_size = kwargs.get("batch_size", 1)
+        cmds = []
+        for i in range(0, len(filenames), 2):
+            model = filenames[i].split("input_")[1].split(".csv")[0]
+            cmd = f"MixTCRpred.py --model {model} --input {filenames[i]} --output {filenames[i + 1]} " \
+                  f"--batch_size {batch_size}"
+            cmds.append(cmd)
+        return cmds
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        for i in range(0, len(filenames), 2):
+            super().run_exec_cmd(cmd[i // 2], [filenames[i], filenames[i + 1]], interpreter,
+                                 conda, cmd_prefix, m_cmd=False, **kwargs)
+
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
+        results_joined = []
+        for i in range(0, len(filenames), 2):
+            path_out = filenames[i+1]
+            results_predictor = pd.read_csv(path_out)
+            results_predictor = results_predictor.fillna("")
+            results_predictor = results_predictor.rename(columns={"cdr3_TRB": "VDJ_cdr3",
+                                                                  "TRBV": "VDJ_v_gene",
+                                                                  "TRBJ": "VDJ_j_gene",
+                                                                  "cdr3_TRA": "VJ_cdr3",
+                                                                  "TRAV": "VJ_v_gene",
+                                                                  "TRAJ": "VJ_j_gene",
+                                                                  "prediction": "Score"})
+            epitope = ""
+            mhc = ""
+            results_predictor["Epitope"] = epitope
+            results_predictor["MHC"] = mhc
+            results_joined.append(results_predictor)
+        results_joined = pd.concat(results_joined, axis=0)
+
+        joining_list = ["VJ_cdr3", "VDJ_cdr3", "VDJ_v_gene", "VDJ_j_gene", "VJ_v_gene", "VJ_j_gene", "Epitope", "MHC"]
+        required_columns = joining_list + ["Score"]
+        results_joined = results_joined[required_columns]
+        df_out = self.transform_output(results_joined, tcrs, epitopes, pairwise, joining_list)
         return df_out
