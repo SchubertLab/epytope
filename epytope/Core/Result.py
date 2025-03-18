@@ -18,10 +18,6 @@ from epytope.Core.Peptide import Peptide
 from copy import deepcopy
 from sys import exit
 import logging
-<<<<<<< HEAD
-import math
-=======
->>>>>>> repo-b2/main
 
 
 class AResult(pandas.DataFrame, metaclass=abc.ABCMeta):
@@ -95,42 +91,25 @@ class EpitopePredictionResult(AResult):
         """
         if isinstance(expressions, tuple):
             expressions = [expressions]
-<<<<<<< HEAD
-
-=======
             
->>>>>>> repo-b2/main
         df = deepcopy(self)
         methods = list(set(df.columns.get_level_values(1)))
         scoretypes = list(set(df.columns.get_level_values(2)))
         if scoretype not in scoretypes:
-<<<<<<< HEAD
-            raise ValueError(
-                "Specified ScoreType {} does not match ScoreTypes of data frame {}.".format(scoretype, scoretypes))
-
-=======
             raise ValueError("Specified ScoreType {} does not match ScoreTypes of data frame {}.".format(scoretype, scoretypes))
         
->>>>>>> repo-b2/main
         for expr in expressions:
             method, comp, thr = expr
             if method not in methods:
                 raise ValueError("Specified method {} does not match methods of data frame {}.".format(method, methods))
             else:
-<<<<<<< HEAD
-                filt = comp(df.xs(method, axis=1, level=1).xs(scoretype, axis=1, level=1), thr).values
-=======
                 filt = comp(df.xs(method, axis = 1, level = 1).xs(scoretype, axis = 1, level = 1), thr).values
->>>>>>> repo-b2/main
                 # Only keep rows which contain values fulfilling the comparators logic in the specified method
                 keep_row = [bool.any() for bool in filt]
                 df = df.loc[keep_row]
 
         return EpitopePredictionResult(df)
-<<<<<<< HEAD
-=======
         
->>>>>>> repo-b2/main
 
     def merge_results(self, others):
         """
@@ -145,23 +124,14 @@ class EpitopePredictionResult(AResult):
 
         if type(others) == type(self):
             others = [others]
-<<<<<<< HEAD
-
-=======
         
->>>>>>> repo-b2/main
         # Concatenates self and to be merged dataframe(s)
         for other in others:
             df = pandas.concat([df, other], axis=1)
 
         # Merge result of multiple predictors in others per allele
-<<<<<<< HEAD
-        df_merged = pandas.concat([group[1] for group in df.groupby(level=[0, 1], axis=1)], axis=1)
-
-=======
         df_merged = pandas.concat([group[1] for group in df.groupby(level=[0,1], axis=1)], axis=1)
     
->>>>>>> repo-b2/main
         return EpitopePredictionResult(df_merged)
 
     def from_dict(d, peps, method):
@@ -176,28 +146,17 @@ class EpitopePredictionResult(AResult):
         """
         scoreType = numpy.asarray([list(m.keys()) for m in [metrics for a, metrics in d.items()]]).flatten()
         alleles = numpy.asarray([numpy.repeat(a, len(set(scoreType))) for a in d]).flatten()
-<<<<<<< HEAD
-
-        meth = numpy.repeat(method, len(scoreType))
-        multi_cols = pandas.MultiIndex.from_arrays([alleles, meth, scoreType], names=["Allele", "Method", "ScoreType"])
-        df = pandas.DataFrame(float(0), index=pandas.Index(peps), columns=multi_cols)
-=======
         
         meth = numpy.repeat(method, len(scoreType))
         multi_cols = pandas.MultiIndex.from_arrays([alleles, meth, scoreType], names=["Allele", "Method", "ScoreType"])
         df = pandas.DataFrame(float(0),index=pandas.Index(peps), columns=multi_cols)
->>>>>>> repo-b2/main
         df.index.name = 'Peptides'
         # Fill DataFrame
         for allele, metrics in d.items():
             for metric, pep_scores in metrics.items():
                 for pep, score in pep_scores.items():
                     df[allele][method][metric][pep] = score
-<<<<<<< HEAD
-
-=======
         
->>>>>>> repo-b2/main
         return EpitopePredictionResult(df)
 
 
@@ -207,19 +166,11 @@ class Distance2SelfResult(AResult):
     """
 
     def filter_result(self, expressions):
-<<<<<<< HEAD
-        # TODO: has to be implemented
-        pass
-
-    def merge_results(self, others):
-        # TODO: has to be implemented
-=======
         #TODO: has to be implemented
         pass
 
     def merge_results(self, others):
         #TODO: has to be implemented
->>>>>>> repo-b2/main
         pass
 
 
@@ -261,22 +212,14 @@ class CleavageSitePredictionResult(AResult):
         if isinstance(expressions, tuple):
             expressions = [expressions]
 
-<<<<<<< HEAD
-        # builde logical expression
-=======
         #builde logical expression
->>>>>>> repo-b2/main
         masks = [list(comp(self.loc[:, method], thr)) for method, comp, thr in expressions]
 
         if len(masks) > 1:
             masks = numpy.logical_and(*masks)
         else:
             masks = masks[0]
-<<<<<<< HEAD
-        # apply to all rows
-=======
         #apply to all rows
->>>>>>> repo-b2/main
 
         return CleavageSitePredictionResult(self.loc[masks, :])
 
@@ -296,11 +239,7 @@ class CleavageSitePredictionResult(AResult):
 
         for i in range(len(others)):
             o = others[i]
-<<<<<<< HEAD
-            df1a, df2a = df.align(o, )
-=======
             df1a, df2a = df.align(o,)
->>>>>>> repo-b2/main
 
             o_diff = o.index.difference(df.index)
             d_diff = df.index.difference(o.index)
@@ -324,11 +263,7 @@ class CleavageSitePredictionResult(AResult):
             df1 = df1a.fillna(0)
             df2 = df2a.fillna(0)
 
-<<<<<<< HEAD
-            df_merged = df1 + df2
-=======
             df_merged = df1+df2
->>>>>>> repo-b2/main
             false_zero = df_merged == 0
             zero = true_zero & false_zero
 
@@ -377,11 +312,7 @@ class CleavageFragmentPredictionResult(AResult):
             masks = numpy.logical_and(*masks)
         else:
             masks = masks[0]
-<<<<<<< HEAD
-        # apply to all rows
-=======
         #apply to all rows
->>>>>>> repo-b2/main
         return CleavageFragmentPredictionResult(self.loc[masks, :])
 
     def merge_results(self, others):
@@ -398,11 +329,7 @@ class CleavageFragmentPredictionResult(AResult):
         if type(others) == type(self):
             others = [others]
 
-<<<<<<< HEAD
-        return CleavageFragmentPredictionResult(pandas.concat([self] + others, axis=1))
-=======
         return CleavageFragmentPredictionResult(pandas.concat([self]+others, axis=1))
->>>>>>> repo-b2/main
 
 
 class TAPPredictionResult(AResult):
@@ -442,11 +369,7 @@ class TAPPredictionResult(AResult):
             masks = numpy.logical_and(*masks)
         else:
             masks = masks[0]
-<<<<<<< HEAD
-        # apply to all rows
-=======
         #apply to all rows
->>>>>>> repo-b2/main
 
         return TAPPredictionResult(self.loc[masks, :])
 
@@ -463,7 +386,6 @@ class TAPPredictionResult(AResult):
         if type(others) == type(self):
             others = [others]
 
-<<<<<<< HEAD
         return TAPPredictionResult(pandas.concat([self] + others, axis=1))
 
 
@@ -551,6 +473,3 @@ class TCRSpecificityPredictionResult(AResult):
             tcr.columns = pandas.MultiIndex.from_tuples(tuples)
             result = pandas.concat([tcr, result], axis=1)
         return result
-=======
-        return TAPPredictionResult(pandas.concat([self]+others, axis=1))
->>>>>>> repo-b2/main
