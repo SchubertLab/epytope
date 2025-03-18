@@ -1439,6 +1439,7 @@ class MixTCRpred(ARepoTCRSpecificityPrediction):
         return self.__organism
 
     def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        self.download_models(**kwargs)
         rename_columns = {
             "VJ_cdr3": "cdr3_TRA",
             "VDJ_cdr3": "cdr3_TRB",
@@ -1452,34 +1453,64 @@ class MixTCRpred(ARepoTCRSpecificityPrediction):
             df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
         else:
             df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
-        df_tcrs = df_tcrs[list(rename_columns.values())]
+        df_tcrs = df_tcrs[list(rename_columns.values()) + ["Epitope", "MHC"]]
         df_tcrs = self.filter_by_length(df_tcrs, "cdr3_TRA", "cdr3_TRB", None)
         for el in rename_columns.values():
             df_tcrs = df_tcrs[(~df_tcrs[el].isna()) & (df_tcrs[el] != "")]
+        df_tcrs = self.filter_epitopes(df_tcrs, **kwargs)
         df_tcrs = df_tcrs.drop_duplicates()
         return df_tcrs
 
     def download_models(self, **kwargs):
         path_models = os.path.join(kwargs["repository"], "pretrained_models")
         n_files = len([f for f in os.listdir(path_models)])
-        if n_files < 148:
-            cmd = f"python {kwargs['repository']}/MixTCRpred.py --download_all"
-            path_file = os.path.join(path_models, "model_A0101_ATDALMTGF.ckpt")
-            self.run_exec_cmd(cmd, path_file, **kwargs)
+        if n_files >= 148:
+            return
+        cmd = f"MixTCRpred.py --download_all"
+        path_file = os.path.join(path_models, "model_A0101_ATDALMTGF.ckpt")
+        try:
+            super().run_exec_cmd(cmd, path_file, **kwargs)
+        except Exception as e:
+            if "urllib.error.HTTPError: HTTP Error 404: NOT FOUND" not in str(e):
+                raise 
+
+    def filter_epitopes(self, df, repository=None, **kwargs):
+        def epitope_contained(row):
+            epitope = row["Epitope"]
+            mhc = row["MHC"].name
+            mhc = mhc.replace("*", "")
+            mhc = mhc.replace(":", "")
+            name = f"{mhc}_{epitope}"
+            return name in models
+
+        models = os.listdir(os.path.join(repository, "pretrained_models"))
+        models = [el.split("model_")[1].split(".ckpt")[0] for el in models if el.endswith(".ckpt")]
+        mask_epitope = df.apply(epitope_contained, axis=1).values
+        delta = len(df) - sum(mask_epitope)
+        if delta > 0:
+            warnings.warn(f"Filtering {delta} rows as Epitope not available for categorical model")
+        df = df[mask_epitope].copy()
+        return df
+        
+                
 
     def save_tmp_files(self, data, **kwargs):
         tmp_folder = self.get_tmp_folder_path()
+        tmp_foldername = "/lustre/groups/imm01/workspace/felix.drost/2023_benchmark/epytope/external/tmp"
+        
         paths = []
-        for _, row in data[["Epitope", "MHC"]].iterrows():
-            epitope = row["Epitope"]  # TODO transform mhc / epitope
+        for _, row in data[["Epitope", "MHC"]].drop_duplicates().iterrows():
+            epitope = row["Epitope"]
             mhc = row["MHC"]
 
             data_epitope = data[(data["Epitope"] == epitope) & (data["MHC"] == mhc)]
             cols = ["cdr3_TRA", "cdr3_TRB", "TRAV", "TRAJ", "TRBV", "TRBJ"]
             data_epitope = data_epitope[cols].copy()
 
-            path_in = os.path.join(tmp_folder, f"input_{mhc}_{epitope}.csv")
-            path_out = os.path.join(tmp_folder, f"output_{mhc}_{epitope}.csv")
+            mhc = mhc.name.replace("*", "").replace(":", "").replace("H-2", "H2")
+
+            path_in = os.path.join(tmp_foldername, f"input_{mhc}_{epitope}.csv")
+            path_out = os.path.join(tmp_foldername, f"output_{mhc}_{epitope}.csv")
 
             paths.append(path_in)
             paths.append(path_out)
@@ -1502,10 +1533,12 @@ class MixTCRpred(ARepoTCRSpecificityPrediction):
                                  conda, cmd_prefix, m_cmd=False, **kwargs)
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
+        import re
         results_joined = []
         for i in range(0, len(filenames), 2):
             path_out = filenames[i+1]
-            results_predictor = pd.read_csv(path_out)
+            results_predictor = pd.read_csv(path_out, index_col=0, comment="#")
+            results_predictor.index.name = None
             results_predictor = results_predictor.fillna("")
             results_predictor = results_predictor.rename(columns={"cdr3_TRB": "VDJ_cdr3",
                                                                   "TRBV": "VDJ_v_gene",
@@ -1513,9 +1546,14 @@ class MixTCRpred(ARepoTCRSpecificityPrediction):
                                                                   "cdr3_TRA": "VJ_cdr3",
                                                                   "TRAV": "VJ_v_gene",
                                                                   "TRAJ": "VJ_j_gene",
-                                                                  "prediction": "Score"})
-            epitope = ""
-            mhc = ""
+                                                                  "score": "Score"})
+            epitope = path_out.split("_")[-1].split(".csv")[0] 
+            mhc = path_out.split("_")[-2] 
+            mhc = mhc.replace("H2", "H-2")
+            if mhc[0] != "H":
+                match = re.match(r"([A-Za-z]+)(\d+)", mhc)
+                letters, numbers = match.groups()
+                mhc = f"HLA-{letters}*{numbers[:-2]}:{numbers[-2:]}"
             results_predictor["Epitope"] = epitope
             results_predictor["MHC"] = mhc
             results_joined.append(results_predictor)
