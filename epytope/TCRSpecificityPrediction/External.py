@@ -1496,7 +1496,6 @@ class MixTCRpred(ARepoTCRSpecificityPrediction):
 
     def save_tmp_files(self, data, **kwargs):
         tmp_folder = self.get_tmp_folder_path()
-        tmp_foldername = "/lustre/groups/imm01/workspace/felix.drost/2023_benchmark/epytope/external/tmp"
         
         paths = []
         for _, row in data[["Epitope", "MHC"]].drop_duplicates().iterrows():
@@ -1509,8 +1508,8 @@ class MixTCRpred(ARepoTCRSpecificityPrediction):
 
             mhc = mhc.name.replace("*", "").replace(":", "").replace("H-2", "H2")
 
-            path_in = os.path.join(tmp_foldername, f"input_{mhc}_{epitope}.csv")
-            path_out = os.path.join(tmp_foldername, f"output_{mhc}_{epitope}.csv")
+            path_in = os.path.join(tmp_folder.name, f"input_{mhc}_{epitope}.csv")
+            path_out = os.path.join(tmp_folder.name, f"output_{mhc}_{epitope}.csv")
 
             paths.append(path_in)
             paths.append(path_out)
@@ -1560,6 +1559,236 @@ class MixTCRpred(ARepoTCRSpecificityPrediction):
         results_joined = pd.concat(results_joined, axis=0)
 
         joining_list = ["VJ_cdr3", "VDJ_cdr3", "VDJ_v_gene", "VDJ_j_gene", "VJ_v_gene", "VJ_j_gene", "Epitope", "MHC"]
+        required_columns = joining_list + ["Score"]
+        results_joined = results_joined[required_columns]
+        df_out = self.transform_output(results_joined, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+
+class NetTCR22Categorical(ARepoTCRSpecificityPrediction):
+    """
+    Author: Fynbo Jensen, Nielsen
+    Paper: https://www.biorxiv.org/content/10.1101/2023.10.12.562001v1.full
+    Repo: https://github.com/mnielLab/NetTCR-2.2
+    """
+    __name = "NetTCR-categorical"
+    __version = "2.2"
+    __tcr_length = (1, 9999)
+    __epitope_length = (1, 12)
+    __organism = "H"
+    __repo = "https://github.com/mnielLab/NetTCR-2.2.git"
+
+    _rename_columns = {
+        "VDJ_cdr3": "cdr3_beta_aa",
+        "VDJ_v_gene": "TRBV_IMGT",
+        "VDJ_j_gene": "TRBJ_IMGT",
+        "VJ_cdr3": "cdr3_alpha_aa",
+        "VJ_v_gene": "TRAV_IMGT",
+        "VJ_j_gene": "TRAJ_IMGT",
+    }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def tcr_length(self):
+        return self.__tcr_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    @property
+    def organism(self):
+        return self.__organism
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        df_tcrs = tcrs.to_pandas(rename_columns=self._rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs.rename(columns={"Epitope": "peptide"})
+        for col in self._rename_columns.values():
+            df_tcrs = df_tcrs[(~df_tcrs[col].isna()) & (df_tcrs[col] != 'nan') & (df_tcrs[col] != "")]
+        df_tcrs = df_tcrs[(~df_tcrs["organism"].isna()) & (df_tcrs["organism"] != 'nan') & (df_tcrs["organism"] != "")]
+        df_tcrs = df_tcrs.drop_duplicates()
+        df_tcrs["binder"] = 0
+        return df_tcrs
+    
+    def filter_epitopes(self, df, repository=None, **kwargs):
+        models = os.listdir(os.path.join(repository, "models", "nettcr_2_2_pretrained"))
+        models = [el for el in models if el not in ["negative_controls", "cv_pred_df.csv"]]
+        mask_epitope = df["Epitope"].isin(models).values
+        delta = len(df) - sum(mask_epitope)
+        if delta > 0:
+            warnings.warn(f"Filtering {delta} rows as Epitope not available for categorical model")
+        df = df[mask_epitope].copy()
+        return df
+
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        
+        for epitope in data["Epitope"].unique():
+            path_in_raw = os.path.join(tmp_folder.name, f"{self.name}_raw_input.csv")
+            path_in_intermediate = os.path.join(tmp_folder.name, f"{self.name}_intermediate_input.csv")
+            path_in = os.path.join(tmp_folder.name, f"{self.name}_input.csv")
+            model = "t.0.v.1" if "model" not in kwargs else kwargs["model"]
+            path_out = os.path.join(tmp_folder.name, f"{model}_prediction.csv")
+            data.to_csv(path_in_raw)
+        return [path_in_raw, path_in_intermediate, path_in, path_out], tmp_folder
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        path_utils = os.path.dirname(__file__)
+        model = kwargs.get("model", "t.0.v.1")
+        model_type = kwargs.get("model_type", "pretrained")
+        modeldir = f"{self.repository_path}/models/nettcr_2_2_pan"
+        cmd_reconstruct = f"{path_utils}/Utils.py nettcr {filenames[0]} {filenames[1]} {filenames[2]}"
+        cmd_predict = f"{self.repository_path}/src/predict.py --test_data {filenames[2]} --outdir {modeldir} --model_name {model} --model_type pan"
+        return [cmd_reconstruct, cmd_predict]
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        super().run_exec_cmd(cmd[0], [None, filenames[2]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+        super().run_exec_cmd(cmd[1], [None, filenames[3]], interpreter, conda, cmd_prefix, m_cmd=False, **kwargs)
+
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
+        results_predictor = pd.read_csv(filenames[3])
+        results_predictor = results_predictor.fillna("")
+        joining_list = ["VJ_cdr3", "VDJ_cdr3", "VDJ_v_gene", "VDJ_j_gene", "VJ_v_gene", "VJ_j_gene", "Epitope"]
+        results_predictor = results_predictor.rename(columns={"cdr3_beta_aa": "VDJ_cdr3",
+                                                              "TRBV_IMGT": "VDJ_v_gene",
+                                                              "TRBJ_IMGT": "VDJ_j_gene",
+                                                              "cdr3_alpha_aa": "VJ_cdr3",
+                                                              "TRAV_IMGT": "VJ_v_gene",
+                                                              "TRAJ_IMGT": "VJ_j_gene",
+                                                              "peptide": "Epitope",
+                                                              "prediction": "Score"})
+        required_columns = joining_list + ["Score"]
+        results_predictor = results_predictor[required_columns]
+        df_out = self.transform_output(results_predictor, tcrs, epitopes, pairwise, joining_list)
+        return df_out
+
+
+class TCRGP(ARepoTCRSpecificityPrediction):
+    """
+    Author: Jokinen et al.
+    Paper: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008814
+    Repo: https://github.com/emmijokinen/TCRGP
+    """
+    __name = "TCRGP"
+    __version = ""
+    __trc_length = (0, 99999999)  # TODO
+    __epitope_length = (0, 999999)
+    __organism = "HM"
+    __repo = "https://github.com/emmijokinen/TCRGP"
+
+    @property
+    def version(self):
+        return self.__version
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def tcr_length(self):
+        return self.__trc_length
+
+    @property
+    def epitope_length(self):
+        return self.__epitope_length
+
+    @property
+    def repo(self):
+        return self.__repo
+
+    @property
+    def organism(self):
+        return self.__organism
+
+    def format_tcr_data(self, tcrs, epitopes, pairwise, **kwargs):
+        rename_columns = {
+            "VDJ_cdr3": "cdr3b",
+        }
+        df_tcrs = tcrs.to_pandas(rename_columns=rename_columns)
+        if pairwise:
+            df_tcrs = self.combine_tcrs_epitopes_pairwise(df_tcrs, epitopes)
+        else:
+            df_tcrs = self.combine_tcrs_epitopes_list(df_tcrs, epitopes)
+        df_tcrs = df_tcrs[list(rename_columns.values()) + ["Epitope", "MHC"]]
+        df_tcrs = self.filter_by_length(df_tcrs, None, "cdr3b", None)
+
+        df_tcrs = df_tcrs[(~df_tcrs["cdr3b"].isna()) & (df_tcrs["cdr3b"] != "")]
+
+        df_tcrs = self.filter_epitopes(df_tcrs, **kwargs)
+        df_tcrs = df_tcrs.drop_duplicates()
+        return df_tcrs
+
+
+    def filter_epitopes(self, df, repository=None, **kwargs):
+        models = os.listdir(os.path.join(repository, "models", "paper"))
+        models = [el.split("_")[2] for el in models if "model" in el]
+        mask_epitope = df["Epitope"].isin(models).values 
+        delta = len(df) - sum(mask_epitope)
+        if delta > 0:
+            warnings.warn(f"Filtering {delta} rows as Epitope not available for categorical model")
+        df = df[mask_epitope].copy()
+        return df
+
+    def save_tmp_files(self, data, **kwargs):
+        tmp_folder = self.get_tmp_folder_path()
+        
+        paths = []
+        for _, row in data[["Epitope", "MHC"]].drop_duplicates().iterrows():
+            epitope = row["Epitope"]
+
+            data_epitope = data[data["Epitope"] == epitope]
+            cols = ["cdr3b"]
+            data_epitope = data_epitope[cols].copy()
+
+            path_in = os.path.join(tmp_folder.name, f"input_{epitope}.csv")
+            path_out = os.path.join(tmp_folder.name, f"output_{epitope}.csv")
+
+            paths.append(path_in)
+            paths.append(path_out)
+            data_epitope.to_csv(path_in)
+        return paths, tmp_folder
+
+    def get_base_cmd(self, filenames, tmp_folder, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        path_utils = os.path.dirname(__file__)
+        repository = kwargs["repository"]
+        cmds = []
+        for i in range(0, len(filenames), 2):
+            model = filenames[i].split("input_")[1].split(".csv")[0]
+            cmd = f"{path_utils}/Utils.py tcrgp {repository} {filenames[i]} {filenames[i+1]}"
+            cmds.append(cmd)
+        return cmds
+
+    def run_exec_cmd(self, cmd, filenames, interpreter=None, conda=None, cmd_prefix=None, **kwargs):
+        for i in range(0, len(filenames), 2):
+            super().run_exec_cmd(cmd[i // 2], [filenames[i], filenames[i + 1]], interpreter,
+                                 conda, cmd_prefix, m_cmd=False, **kwargs)
+
+    def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
+        results_joined = []
+        for i in range(0, len(filenames), 2):
+            path_out = filenames[i+1]
+            results_predictor = pd.read_csv(path_out, index_col=0)
+            results_predictor = results_predictor.fillna("")
+            results_predictor = results_predictor.rename(columns={"cdr3b": "VDJ_cdr3"})
+            results_joined.append(results_predictor)
+        results_joined = pd.concat(results_joined, axis=0)
+
+        joining_list = ["VDJ_cdr3", "Epitope"]
         required_columns = joining_list + ["Score"]
         results_joined = results_joined[required_columns]
         df_out = self.transform_output(results_joined, tcrs, epitopes, pairwise, joining_list)

@@ -42,6 +42,26 @@ def tcellmatch():
     np.save(path_out, ffn.predictions)
 
 
+def tcrgp():
+    path_repo = str(sys.argv[2])    
+    path_in = str(sys.argv[3])
+    path_out = str(sys.argv[4])
+    epitope = path_in.split("_")[-1].split(".csv")[0]
+    
+    import tcrgp
+    import pickle 
+
+    with open(f"{path_repo}/models/paper/model_vdj_{epitope}_cdr3b", "rb") as f:
+        params = pickle.load(f)
+    predictions = tcrgp.predict(path_in, params)
+
+    df = pd.read_csv(path_in, index_col=0)
+    assert len(df) == len(predictions), "Missmatch between predictions and input data"
+    df["Score"] = predictions
+    df["Epitope"] = epitope
+    df.to_csv(path_out)
+
+
 def fullseq_reconstruction(todo_cut=True):
     try:
         from Stitchr import stitchrfunctions as fxn
@@ -126,6 +146,7 @@ if __name__ == "__main__":
     functions = {
         "tcellmatch": tcellmatch,
         "stapler": fullseq_reconstruction,
-        "nettcr": nettcr
+        "nettcr": nettcr,
+        "tcrgp": tcrgp,
     }
     functions[flavor]()
