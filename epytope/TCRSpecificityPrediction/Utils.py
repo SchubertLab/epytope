@@ -48,6 +48,8 @@ def tcrgp():
     path_out = str(sys.argv[4])
     epitope = path_in.split("_")[-1].split(".csv")[0]
     
+    sys.path.append(path_repo)
+
     import tcrgp
     import pickle 
 
