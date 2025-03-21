@@ -1558,7 +1558,8 @@ class MixTCRpred(ARepoTCRSpecificityPrediction):
                                                                   "cdr3_TRA": "VJ_cdr3",
                                                                   "TRAV": "VJ_v_gene",
                                                                   "TRAJ": "VJ_j_gene",
-                                                                  "score": "Score"})
+                                                                  "perc_rank": "Score"})
+            results_predictor["Score"] = 1 - results_predictor["Score"]/100
             epitope = path_out.split("_")[-1].split(".csv")[0] 
             mhc = path_out.split("_")[-2] 
             mhc = mhc.replace("H2", "H-2")
