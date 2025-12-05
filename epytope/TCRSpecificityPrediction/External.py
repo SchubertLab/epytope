@@ -375,7 +375,7 @@ class EpiTCR(ARepoTCRSpecificityPrediction):
         if not os.path.exists(model_filepath):
             raise TypeError(f"Please unzip the models stored at {model_filepath}.zip to {model_filepath}")
         cmd = f"predict.py --testfile {filenames[0]} --modelfile {model_filepath}"
-        cmd += f"--chain {self._model_input} --outfile {filenames[1]}"
+        cmd += f" --chain {self._model_input} --outfile {filenames[1]}"
         return cmd
 
     def format_results(self, filenames, tmp_folder, tcrs, epitopes, pairwise, **kwargs):
