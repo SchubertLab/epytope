@@ -1363,6 +1363,8 @@ class NetTCR22(ARepoTCRSpecificityPrediction):
         return df_tcrs
 
     def filter_epitopes(self, df, repository=None, **kwargs):
+       if kwargs.get("model_type", None) == "pan":
+          return df
         models = os.listdir(os.path.join(repository, "models", "nettcr_2_2_pretrained"))
         models = [el for el in models if el not in ["negative_controls", "cv_pred_df.csv"]]
         mask_epitope = df["peptide"].isin(models).values
